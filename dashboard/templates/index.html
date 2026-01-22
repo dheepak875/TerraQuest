@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TerraQuest Mission Control</title>
+    <!-- Joystick Lib -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.1/nipplejs.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0b0c10;
+            --card-bg: #1f2833;
+            --accent-cyan: #66fcf1;
+            --accent-green: #45a29e;
+            --text-main: #c5c6c7;
+            --font-mono: 'Courier New', Courier, monospace;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            border-bottom: 2px solid var(--accent-cyan);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin: 0;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Video Feed Section */
+        .video-feed {
+            background-color: #000;
+            border: 1px solid var(--accent-green);
+            border-radius: 8px;
+            height: 480px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Joystick Zone */
+        #joystick-zone {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 150px;
+            height: 150px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            z-index: 10;
+        }
+
+        /* Camera Controls */
+        .cam-controls {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px;
+            border-radius: 8px;
+            color: white;
+            z-index: 10;
+        }
+
+        .cam-controls input {
+            vertical-align: middle;
+        }
+
+        .video-feed img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .video-overlay {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: red;
+            font-weight: bold;
+            font-family: var(--font-mono);
+            animation: blink 1s infinite;
+        }
+
+        /* Sensor Grid */
+        .sensor-grid {
+            display: grid;
+            grid-template-rows: repeat(4, 1fr);
+            gap: 15px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-left: 5px solid var(--accent-cyan);
+            border-radius: 4px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateX(5px);
+        }
+
+        .card-title {
+            font-size: 0.85rem;
+            color: var(--accent-green);
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .card-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #fff;
+            font-family: var(--font-mono);
+        }
+
+        .unit {
+            font-size: 1rem;
+            color: #aaa;
+        }
+
+        footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #555;
+        }
+
+        @keyframes blink {
+            50% {
+                opacity: 0;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+
+            .video-feed {
+                height: 300px;
+            }
+
+            .sensor-grid {
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: auto;
+            }
+        }
+
+        .btn {
+            padding: 10px 20px;
+            font-family: var(--font-mono);
+            font-weight: bold;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 0 10px;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+
+        .btn:hover {
+            opacity: 1;
+        }
+
+        .btn-start {
+            background-color: var(--accent-green);
+            color: white;
+        }
+
+        .btn-stop {
+            background-color: #e74c3c;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>TerraQuest // Mission Control</h1>
+        <div style="font-family: var(--font-mono); font-size: 0.9rem; margin-top: 5px;">STATUS: <span
+                id="mission-status">IDLE</span> // CONNECTION: SECURE</div>
+        <div style="margin-top: 15px;">
+            <button id="btn-start" class="btn btn-start" onclick="toggleMission(true)">START MISSION</button>
+            <button id="btn-stop" class="btn btn-stop" onclick="toggleMission(false)">STOP MISSION</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Live Video Feed -->
+        <div class="video-feed">
+            <div class="video-overlay">• LIVE FEED</div>
+            <!-- Vilib typically streams MJPEG at port 9000 -->
+            <!-- We use JS to dynamically set the host so it works on any network -->
+            <img id="camera-stream" src="" alt="Waiting for Video Signal...">
+
+            <!-- Manual Controls Overlay -->
+            <div id="joystick-zone"></div>
+            <div class="cam-controls">
+                <div>Pan: <input type="range" min="-90" max="90" value="0" oninput="updateCam(this.value, null)"></div>
+                <div style="margin-top:5px;">Tilt: <input type="range" min="-35" max="65" value="0"
+                        oninput="updateCam(null, this.value)"></div>
+            </div>
+        </div>
+
+        <!-- Sensor Data -->
+        <div class="sensor-grid">
+            <div class="card">
+                <div class="card-title">Anomaly Detector</div>
+                <div class="card-value"><span id="magnetic">--</span> <span class="unit">µT</span></div>
+            </div>
+            <div class="card">
+                <div class="card-title">Obstacle Dist</div>
+                <div class="card-value"><span id="moisture">--</span> <span class="unit">cm</span></div>
+            </div>
+            <div class="card">
+                <div class="card-title">Environmental Data</div>
+                <div class="card-value"><span id="temp">--</span> <span class="unit">°C</span></div>
+            </div>
+            <div class="card">
+                <div class="card-title">Floor Brightness</div>
+                <div class="card-value"><span id="co2">--</span> <span class="unit">avg</span></div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        System ID: TQ-PROTO-01 | Latency: <span id="ping">12</span>ms
+    </footer>
+
+    <script>
+        // Set camera stream source dynamically based on current host
+        const protocol = window.location.protocol;
+        const hostname = window.location.hostname;
+        // Vilib usually uses port 9000 and /mjpg route
+        document.getElementById('camera-stream').src = `http://${hostname}:9000/mjpg`;
+
+        async function updateSensors() {
+            try {
+                const response = await fetch('/data');
+                const data = await response.json();
+
+                document.getElementById('magnetic').innerText = data.magnetic;
+                document.getElementById('moisture').innerText = data.moisture;
+                document.getElementById('temp').innerText = data.temp;
+                document.getElementById('co2').innerText = data.co2;
+
+                // Random latency for effect
+                document.getElementById('ping').innerText = Math.floor(Math.random() * 20) + 10;
+            } catch (error) {
+                console.error('Error fetching sensor data:', error);
+            }
+        }
+
+        async function toggleMission(active) {
+            const endpoint = active ? '/api/mission/start' : '/api/mission/stop';
+            try {
+                const res = await fetch(endpoint, { method: 'POST' });
+                const data = await res.json();
+                console.log(data);
+                updateMissionUI(data.active);
+            } catch (e) {
+                console.error("Mission toggle failed", e);
+            }
+        }
+
+        function updateMissionUI(active) {
+            const statusEl = document.getElementById('mission-status');
+            if (active) {
+                statusEl.innerText = "ACTIVE";
+                statusEl.style.color = "var(--accent-cyan)";
+            } else {
+                statusEl.innerText = "IDLE";
+                statusEl.style.color = "#888";
+            }
+        }
+
+        async function checkStatus() {
+            try {
+                const res = await fetch('/api/mission/status');
+                const data = await res.json();
+                updateMissionUI(data.active);
+            } catch (e) { }
+        }
+
+        // Update every 500ms
+        setInterval(updateSensors, 500);
+        setInterval(checkStatus, 1000); // Check status periodically
+
+        // --- Manual Control Logic ---
+        var joystickManager = nipplejs.create({
+            zone: document.getElementById('joystick-zone'),
+            mode: 'static',
+            position: { left: '50%', top: '50%' },
+            color: 'cyan'
+        });
+
+        joystickManager.on('move', function (evt, data) {
+            if (!data.vector) return;
+            // Convert vector to Speed (Y) and Angle (X)
+            // Speed: data.vector.y (up is positive) * 100
+            // Angle: data.vector.x (right is positive) * 35
+
+            // Limit frequency?
+            const speed = Math.round(data.vector.y * 100);
+            const angle = Math.round(data.vector.x * 35);
+            sendMove(speed, angle);
+        });
+
+        joystickManager.on('end', function () {
+            sendMove(0, 0); // Stop
+        });
+
+        let currentPan = 0;
+        let currentTilt = 0;
+
+        function updateCam(pan, tilt) {
+            if (pan !== null) currentPan = parseInt(pan);
+            if (tilt !== null) currentTilt = parseInt(tilt);
+
+            fetch('/api/control/camera', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pan: currentPan, tilt: currentTilt })
+            });
+        }
+
+        // Rate limit move commands to avoid flooding
+        let lastMoveTime = 0;
+        function sendMove(speed, angle) {
+            const now = Date.now();
+            if (now - lastMoveTime < 100 && speed !== 0) return; // Limit updates
+            lastMoveTime = now;
+
+            fetch('/api/control/move', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ speed: speed, angle: angle })
+            });
+        }
+    </script>
+</body>
+
+</html>
