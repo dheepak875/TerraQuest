@@ -2,12 +2,13 @@ import time
 from picarx import Picarx
 # from robot_hat import Ultrasonic, Grayscale_Module, Pin # Unused after refactor
 
+from terraquest_sensors import TerraQuestSensors
+
 class TerraQuestRover:
     def __init__(self):
         self.px = Picarx()
         # Initialize sensors
-        # Sensors are managed by self.px instance
-        pass
+        self.sensors = TerraQuestSensors()
         
         # Configuration
         self.cruise_speed = 20  # forward speed
@@ -20,6 +21,7 @@ class TerraQuestRover:
         # Sensor Memory
         self.distance = 0
         self.cliff_sensors = [0, 0, 0]
+        self.env_data = {'temp': 0, 'humidity': 0, 'pressure': 0, 'gas': 0}
         
     def stop(self):
         self.px.stop()
@@ -132,10 +134,15 @@ class TerraQuestRover:
             while self.running:
                 if self.mission_active:
                     self.run_step()
+                    # Update environmental sensors occasionally
+                    if time.time() % 1.0 < 0.1: # simple rate limit approx 1hz
+                        self.env_data = self.sensors.read_environment()
                     time.sleep(0.05) # Loop delay
                 else:
                     self.stop()
-                    time.sleep(0.5) # Idling
+                    # Keep updating sensors even when stopped
+                    self.env_data = self.sensors.read_environment()
+                    time.sleep(1.0) # Idling
                 
         except KeyboardInterrupt:
             print("Mission Aborted.")

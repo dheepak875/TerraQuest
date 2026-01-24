@@ -114,10 +114,11 @@ def get_sensor_data():
              except: pass
 
         data = {
-            'magnetic': 0,      
+            'magnetic': int(rover.env_data.get('pressure', 0)), # Mapping Pressure to Magnetic slot for now
             'moisture': round(rover.distance, 1) if rover.distance else 0,
-            'temp': 0,          
-            'co2':  int(sum(rover.cliff_sensors)/3) if rover.cliff_sensors else 0 # Avg Grayscale
+            'temp': rover.env_data.get('temp', 0),          
+            'co2':  rover.env_data.get('gas', 0),
+            'humidity': rover.env_data.get('humidity', 0)
         }
         return jsonify(data)
         
