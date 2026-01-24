@@ -44,125 +44,138 @@
         .container {
             display: grid;
             grid-template-columns: 2fr 1fr;
-            gap: 20px;
-            max-width: 1400px;
-            margin: 0 auto;
+            gap: 15px;
+            max-width: 100%;
+            height: calc(100vh - 100px);
+            /* Fit screen minus header/footer */
+            margin: 0;
+            overflow: hidden;
+            /* Prevent body scroll */
         }
 
-        /* Video Feed Section */
+        /* Layout Columns */
+        .main-col {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            height: 100%;
+        }
+
         .video-feed {
+            flex: 6;
+            /* 60% vertical space */
             background-color: #000;
             border: 1px solid var(--accent-green);
             border-radius: 8px;
-            height: 480px;
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
-            position: relative;
             overflow: hidden;
-        }
-
-        /* Joystick Zone */
-        #joystick-zone {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            width: 150px;
-            height: 150px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 50%;
-            z-index: 10;
-        }
-
-        /* Camera Controls */
-        .cam-controls {
-            position: absolute;
-            bottom: 10px;
-            left: 10px;
-            background: rgba(0, 0, 0, 0.6);
-            padding: 10px;
-            border-radius: 8px;
-            color: white;
-            z-index: 10;
-        }
-
-        .cam-controls input {
-            vertical-align: middle;
+            width: 100%;
+            height: auto;
+            min-height: 0;
         }
 
         .video-feed img {
             width: 100%;
             height: 100%;
             object-fit: cover;
+            /* Fills the box! */
         }
 
-        .video-overlay {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            color: red;
-            font-weight: bold;
-            font-family: var(--font-mono);
-            animation: blink 1s infinite;
+        .thermal-card {
+            flex: 4;
+            /* 40% vertical space */
+            background-color: #000;
+            border: 2px solid #e74c3c;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 !important;
+            width: 100%;
+            min-height: 0;
         }
 
-        /* Sensor Grid */
+        #thermal-canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: fill;
+            image-rendering: pixelated;
+        }
+
+
+
+        /* Sensor Column */
         .sensor-grid {
             display: grid;
-            grid-template-rows: repeat(4, 1fr);
-            gap: 15px;
-            max-height: 800px;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 10px;
+            height: 100%;
             overflow-y: auto;
+            max-height: none;
         }
 
+        .compact-card {
+            /* Now handled by grid cells */
+            min-height: 0;
+            /* Allow shrinking */
+            /* justify-content: space-between; inside flex card usually is ok */
+        }
+
+        /* Override generic card */
         .card {
             background-color: var(--card-bg);
             border-left: 5px solid var(--accent-cyan);
             border-radius: 4px;
-            padding: 10px;
             display: flex;
             flex-direction: column;
             justify-content: center;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-            min-height: 120px;
+            /* Reset padding for compact */
+            padding: 5px;
         }
 
         .card-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 5px;
+            margin-bottom: 2px;
         }
 
         .card-title {
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             color: var(--accent-green);
             text-transform: uppercase;
         }
 
         .card-value-display {
-            font-size: 1.5rem;
+            font-size: 1.2rem;
             font-weight: bold;
             color: #fff;
             font-family: var(--font-mono);
         }
 
         .unit {
-            font-size: 0.8rem;
+            font-size: 0.7rem;
             color: #aaa;
         }
 
         canvas {
-            max-height: 80px;
+            max-height: 50px;
+            /* Force smaller size */
             width: 100%;
         }
 
         /* Air Quality Badge */
         .aq-badge {
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.8rem;
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 0.7rem;
             font-weight: bold;
             color: #fff;
         }
@@ -180,30 +193,41 @@
         }
 
         footer {
-            margin-top: 30px;
+            margin-top: 10px;
             text-align: center;
-            font-size: 0.8rem;
+            font-size: 0.7rem;
             color: #555;
         }
 
-        @keyframes blink {
-            50% {
-                opacity: 0;
-            }
+        /* ... utilities ... */
+
+        .video-overlay {
+            font-size: 0.8rem;
+            top: 5px;
+            left: 5px;
         }
 
+        /* Mobile adjust */
         @media (max-width: 900px) {
             .container {
                 grid-template-columns: 1fr;
+                height: auto;
+                overflow: auto;
             }
 
             .video-feed {
                 height: 300px;
+                flex: none;
+            }
+
+            .thermal-card {
+                height: 200px;
+                flex: none;
             }
 
             .sensor-grid {
+                height: auto;
                 grid-template-columns: 1fr 1fr;
-                grid-template-rows: auto;
             }
         }
 
@@ -252,6 +276,7 @@
         <div class="video-feed">
             <div class="video-overlay">• LIVE FEED</div>
             <img id="camera-stream" src="" alt="Waiting for Video Signal...">
+
             <!-- Manual Controls Overlay -->
             <div id="joystick-zone"></div>
             <div class="cam-controls">
@@ -261,15 +286,28 @@
             </div>
         </div>
 
+        <!-- Thermal Feed (New) -->
+        <div class="card" style="padding:0; overflow:hidden; position:relative;">
+            <div class="video-overlay" style="color:#e74c3c">• THERMAL</div>
+            <canvas id="thermal-canvas" width="32" height="24"
+                style="width:100%; height:100%; object-fit:contain; image-rendering: pixelated;"></canvas>
+        </div>
+
         <!-- Sensor Data -->
         <div class="sensor-grid">
-            <!-- Temp -->
-            <div class="card">
+            <!-- Metal Detector (Primary) -->
+            <div class="card" id="mag-card">
                 <div class="card-header">
-                    <div class="card-title">Temperature</div>
-                    <div class="card-value-display"><span id="temp">--</span> <span class="unit">°C</span></div>
+                    <div class="card-title">Metal Detector</div>
+                    <span id="mag-status" class="aq-badge aq-good">CLEAR</span>
                 </div>
-                <canvas id="chart-temp"></canvas>
+                <!-- Field Strength & Anomaly Score -->
+                <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                    <div class="card-value-display"><span id="mag-strength">--</span> <span class="unit">µT</span></div>
+                    <div style="font-size:0.8rem; color:#aaa;">ANOMALY: <span id="mag-anomaly"
+                            style="color:#e74c3c">0</span></div>
+                </div>
+                <canvas id="chart-mag"></canvas>
             </div>
 
             <!-- Humidity & Pressure -->
@@ -288,7 +326,7 @@
             <!-- Air Quality -->
             <div class="card">
                 <div class="card-header">
-                    <div class="card-title">Air Quality (VOC)</div>
+                    <div class="card-title">Air Quality</div>
                     <span id="aq-badge" class="aq-badge aq-good">GOOD</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: flex-end;">
@@ -348,7 +386,7 @@
             });
         }
 
-        const chartTemp = createChart(document.getElementById('chart-temp'), 'Temp', '#e74c3c');
+        const chartMag = createChart(document.getElementById('chart-mag'), 'Mag Field', '#f1c40f');
         const chartHumid = createChart(document.getElementById('chart-humid'), 'Humidity', '#3498db');
         const chartGas = createChart(document.getElementById('chart-gas'), 'Gas Res', '#2ecc71');
 
@@ -358,6 +396,30 @@
             data.shift();
             chart.update();
         }
+
+        // --- Audio System ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let audioEnabled = false;
+
+        function playBeep(frequency = 1000, duration = 0.1) {
+            if (!audioEnabled) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        // Resume audio on first click
+        document.body.addEventListener('click', () => {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            audioEnabled = true;
+        }, { once: true });
 
         // --- Core Logic ---
 
@@ -371,20 +433,49 @@
                 const data = await response.json();
 
                 // Values
-                document.getElementById('temp').innerText = data.temp;
+                // document.getElementById('temp').innerText = data.temp; // Removed Temp Card
                 document.getElementById('humidity').innerText = data.humidity;
-                document.getElementById('pressure').innerText = data.magnetic; // mapped from backend
+                document.getElementById('pressure').innerText = data.pressure;
                 document.getElementById('co2').innerText = data.co2;
                 document.getElementById('moisture').innerText = data.moisture;
                 document.getElementById('altitude').innerText = data.altitude;
+
+                // Mag Data
+                const magStrength = data.magnetic;
+                const magAnomaly = data.mag_anomaly;
+                document.getElementById('mag-strength').innerText = magStrength;
+                document.getElementById('mag-anomaly').innerText = magAnomaly;
 
                 // Ping
                 document.getElementById('ping').innerText = Math.floor(Math.random() * 20) + 10;
 
                 // Charts
-                updateChart(chartTemp, data.temp);
+                updateChart(chartMag, magStrength);
                 updateChart(chartHumid, data.humidity);
                 updateChart(chartGas, data.co2);
+
+                // Metal Detection Logic
+                const magCard = document.getElementById('mag-card');
+                const magStatus = document.getElementById('mag-status');
+
+                // Threshold for detection (tuned based on earlier test ~1000-2000 jump)
+                if (magAnomaly > 1500) {
+                    magStatus.innerText = "DETECTED!";
+                    magStatus.className = "aq-badge aq-poor"; // Red
+                    // Flash Effect
+                    if (Date.now() % 500 < 250) {
+                        magCard.style.backgroundColor = "#c0392b";
+                    } else {
+                        magCard.style.backgroundColor = "var(--card-bg)";
+                    }
+                    // Audio Alert (Geiger style)
+                    if (Math.random() > 0.5) playBeep(2000 + Math.random() * 500, 0.05);
+
+                } else {
+                    magStatus.innerText = "Scanning...";
+                    magStatus.className = "aq-badge aq-good"; // Green
+                    magCard.style.backgroundColor = "var(--card-bg)";
+                }
 
                 // AQI Logic (Gas Resistance)
                 // > 50k = Excellent, 10k-50k = Good, < 10k = Poor
@@ -397,7 +488,7 @@
                     badge.innerText = "GOOD";
                     badge.className = "aq-badge aq-fair";
                 } else {
-                    badge.innerText = "POOR (VOCs)";
+                    badge.innerText = "POOR";
                     badge.className = "aq-badge aq-poor";
                 }
 
@@ -436,8 +527,56 @@
             } catch (e) { }
         }
 
-        setInterval(updateSensors, 1000); // 1Hz update for graphs
-        setInterval(checkStatus, 2000);
+        const thermalCanvas = document.getElementById('thermal-canvas');
+        const thermalCtx = thermalCanvas.getContext('2d');
+
+        async function updateThermal() {
+            try {
+                const res = await fetch('/api/thermal');
+                const data = await res.json();
+                if (!data || data.length !== 768) return;
+
+                const imgData = thermalCtx.createImageData(32, 24);
+
+                // Simple auto-scaling color map
+                let minT = 20; // fixed range for stability or
+                let maxT = 35; // dynamic range
+
+                // Optional: Dynamic range 
+                // minT = Math.min(...data);
+                // maxT = Math.max(...data);
+
+                for (let i = 0; i < 768; i++) {
+                    const temp = data[i];
+                    const t = (temp - minT) / (maxT - minT); // norm 0-1
+
+                    // Simple Heatmap: Blue -> Green -> Red
+                    let r = 0, g = 0, b = 0;
+                    if (t < 0.5) {
+                        // Blue to Green
+                        b = 255 * (1 - t * 2);
+                        g = 255 * (t * 2);
+                    } else {
+                        // Green to Red
+                        g = 255 * (1 - (t - 0.5) * 2);
+                        r = 255 * ((t - 0.5) * 2);
+                    }
+
+                    const idx = i * 4;
+                    imgData.data[idx] = r;     // R
+                    imgData.data[idx + 1] = g; // G
+                    imgData.data[idx + 2] = b; // B
+                    imgData.data[idx + 3] = 255; // Alpha
+                }
+                thermalCtx.putImageData(imgData, 0, 0);
+
+            } catch (e) { }
+        }
+
+        // Polling Rates
+        setInterval(updateSensors, 100); // 10Hz for fast Metal Detector response
+        setInterval(updateThermal, 500); // 2Hz for thermal (heavy payload)
+        setInterval(checkStatus, 2000);  // Low priority status checks
 
         // --- Manual Control Logic ---
         var joystickManager = nipplejs.create({

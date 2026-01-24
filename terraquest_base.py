@@ -22,6 +22,13 @@ class TerraQuestRover:
         self.distance = 0
         self.cliff_sensors = [0, 0, 0]
         self.env_data = {'temp': 0, 'humidity': 0, 'pressure': 0, 'gas': 0, 'altitude': 0}
+        self.mag_data = {'strength': 0, 'anomaly': 0}
+        self.thermal_frame = []
+        
+        # Timing trackers
+        self.last_env_time = 0
+        self.last_mag_time = 0
+        self.last_thermal_time = 0
         
     def stop(self):
         self.px.stop()
@@ -132,17 +139,51 @@ class TerraQuestRover:
         self.running = True
         try:
             while self.running:
+                current_time = time.time()
+                
                 if self.mission_active:
                     self.run_step()
                     # Update environmental sensors occasionally
-                    if time.time() % 1.0 < 0.1: # simple rate limit approx 1hz
+                    if current_time - self.last_env_time > 1.0:
                         self.env_data = self.sensors.read_environment()
-                    time.sleep(0.05) # Loop delay
+                        self.last_env_time = current_time
+                    
+                    if current_time - self.last_env_time > 1.0:
+                        self.env_data = self.sensors.read_environment()
+                        self.last_env_time = current_time
+                    
+                    # Read Magnetometer (Very Frequent - 20Hz target)
+                    if current_time - self.last_mag_time > 0.05:
+                        s, a = self.sensors.get_magnetic_data()
+                        self.mag_data['strength'] = s
+                        self.mag_data['anomaly'] = a
+                        self.last_mag_time = current_time
+                        
+                        # Debug Print every 1s
+                        if int(current_time) % 2 == 0 and current_time % 1.0 < 0.05:
+                             print(f"Mag: {s} | Anom: {a}")
+
+                    # Read Thermal (Slow - 4Hz max, limits loop speed due to 0.1s I2C blocking)
+                    if current_time - self.last_thermal_time > 0.25:
+                        self.thermal_frame = self.sensors.get_thermal_frame()
+                        self.last_thermal_time = current_time
+
+                    time.sleep(0.005) # Very tight loop for responsiveness
                 else:
                     self.stop()
                     # Keep updating sensors even when stopped
-                    self.env_data = self.sensors.read_environment()
-                    time.sleep(1.0) # Idling
+                    if current_time - self.last_env_time > 1.0:
+                        self.env_data = self.sensors.read_environment()
+                        self.last_env_time = current_time
+                        # Print status occasionally
+                        print(f"Idle Sensors - Mag: {self.mag_data.get('strength')}")
+                    
+                    s, a = self.sensors.get_magnetic_data()
+                    self.mag_data['strength'] = s
+                    self.mag_data['anomaly'] = a
+                    self.thermal_frame = self.sensors.get_thermal_frame()
+                    
+                    time.sleep(0.2) # Idling
                 
         except KeyboardInterrupt:
             print("Mission Aborted.")

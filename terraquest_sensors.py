@@ -10,10 +10,62 @@ except ImportError:
     BME68X_AVAILABLE = False
     print("Warning: adafruit-circuitpython-bme680 not installed. BME688 data will be mocked.")
 
+# Try to import MLX90640
+try:
+    import adafruit_mlx90640
+    MLX_AVAILABLE = True
+except ImportError:
+    MLX_AVAILABLE = False
+    print("Warning: adafruit-circuitpython-mlx90640 not installed.")
+
+# Try to import Qwiic MMC5983MA
+try:
+    import qwiic_mmc5983ma
+    import math
+    MAG_AVAILABLE = True
+except ImportError:
+    MAG_AVAILABLE = False
+    print("Warning: sparkfun-qwiic-mmc5983ma not installed.")
+
 class TerraQuestSensors:
     def __init__(self):
         self.bme = None
+        self.mlx = None
+        self.mag = None
+        self.thermal_frame = [0] * 768
+        
+        # Mag Baseline
+        self.mag_baseline = 0
+        self.mag_alpha = 0.05 # Low pass filter factor for baseline
+        
         self.init_bme688()
+        self.init_mlx90640()
+        self.init_mmc5983ma()
+    
+    def init_mmc5983ma(self):
+        if MAG_AVAILABLE:
+            try:
+                self.mag = qwiic_mmc5983ma.QwiicMMC5983MA()
+                if self.mag.connected == False:
+                    self.mag = None
+                    print("MMC5983MA not detected.")
+                else:
+                    self.mag.begin()
+                    print("MMC5983MA Magnetometer Initialized.")
+            except Exception as e:
+                print(f"Error initializing MMC5983MA: {e}")
+                self.mag = None
+    
+    def init_mlx90640(self):
+        if MLX_AVAILABLE:
+            try:
+                i2c = board.I2C()
+                self.mlx = adafruit_mlx90640.MLX90640(i2c)
+                self.mlx.refresh_rate = adafruit_mlx90640.RefreshRate.REFRESH_4_HZ
+                print("MLX90640 Thermal Camera Initialized.")
+            except Exception as e:
+                print(f"Error initializing MLX90640: {e}")
+                self.mlx = None
         
     def init_bme688(self):
         if BME68X_AVAILABLE:
@@ -55,6 +107,48 @@ class TerraQuestSensors:
                 pass
         
         return data
+
+    def get_thermal_frame(self):
+        if self.mlx:
+            try:
+                self.mlx.getFrame(self.thermal_frame)
+                return self.thermal_frame
+            except Exception:
+                pass
+        return []
+
+    def get_magnetic_data(self):
+        """
+        Returns (total_strength, anomaly_score)
+        """
+        if self.mag:
+            try:
+                # Read raw values (Tuple return confirmed in test)
+                x, y, z = self.mag.get_measurement_xyz()
+                
+                # Calculate Total Field Magnitude
+                strength = math.sqrt(x*x + y*y + z*z)
+                
+                # Initialize baseline if first run
+                if self.mag_baseline == 0:
+                    self.mag_baseline = strength
+                
+                # Update baseline slowly (approx background field)
+                # Lower alpha = slower update = better detection of sustained magnets
+                self.mag_alpha = 0.02
+                self.mag_baseline = (self.mag_baseline * (1 - self.mag_alpha)) + (strength * self.mag_alpha)
+                
+                # Anomaly is the deviation from baseline
+                anomaly = abs(strength - self.mag_baseline)
+                
+                # Debug print to see what's happening
+                # print(f"MAG: {int(strength)} | Base: {int(self.mag_baseline)} | Anom: {int(anomaly)}")
+                
+                return int(strength), int(anomaly)
+            except Exception as e:
+                print(f"Mag Error: {e}")
+                pass
+        return 0, 0
 
 # Test execution
 if __name__ == "__main__":

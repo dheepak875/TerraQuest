@@ -113,21 +113,32 @@ def get_sensor_data():
                  rover.check_obstacle()
              except: pass
 
-        data = {
-            'magnetic': int(rover.env_data.get('pressure', 0)), # Mapping Pressure to Magnetic slot for now
-            'moisture': round(rover.distance, 1) if rover.distance else 0,
-            'temp': rover.env_data.get('temp', 0),          
-            'co2':  rover.env_data.get('gas', 0),
-            'humidity': rover.env_data.get('humidity', 0),
-            'altitude': rover.env_data.get('altitude', 0)
-        }
-        return jsonify(data)
-        
-    # Fallback if rover not ready
     data = {
-        'magnetic': 0, 'moisture': 0, 'temp': 0, 'co2': 0
+        'magnetic': rover.mag_data['strength'], 
+        'mag_anomaly': rover.mag_data['anomaly'],
+        'moisture': round(rover.distance, 1) if rover.distance else 0,
+        'temp': rover.env_data.get('temp', 0),          
+        'co2':  rover.env_data.get('gas', 0),
+        'humidity': rover.env_data.get('humidity', 0),
+        'altitude': rover.env_data.get('altitude', 0),
+        # Pass pressure separately if needed, previously mapped to 'magnetic'
+        'pressure': rover.env_data.get('pressure', 0)
     }
     return jsonify(data)
+    
+    # Fallback if rover not ready
+    data = {
+        'magnetic': 0, 'mag_anomaly': 0, 'moisture': 0, 'temp': 0, 'co2': 0, 'humidity': 0, 'altitude': 0, 'pressure': 0
+    }
+    return jsonify(data)
+
+@app.route('/api/thermal')
+def get_thermal_data():
+    if rover and rover.thermal_frame:
+        # Return list of 768 dicts or just values
+        # Just values is smaller payload 
+        return jsonify(rover.thermal_frame)
+    return jsonify([])
 
 if __name__ == '__main__':
     # Run on 0.0.0.0 to be accessible externally
