@@ -7,6 +7,8 @@
     <title>TerraQuest Mission Control</title>
     <!-- Joystick Lib -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.1/nipplejs.min.js"></script>
+    <!-- Charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --bg-color: #0b0c10;
@@ -43,7 +45,7 @@
             display: grid;
             grid-template-columns: 2fr 1fr;
             gap: 20px;
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
         }
 
@@ -110,41 +112,71 @@
             display: grid;
             grid-template-rows: repeat(4, 1fr);
             gap: 15px;
+            max-height: 800px;
+            overflow-y: auto;
         }
 
         .card {
             background-color: var(--card-bg);
             border-left: 5px solid var(--accent-cyan);
             border-radius: 4px;
-            padding: 15px;
+            padding: 10px;
             display: flex;
             flex-direction: column;
             justify-content: center;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-            transition: transform 0.2s;
+            min-height: 120px;
         }
 
-        .card:hover {
-            transform: translateX(5px);
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
         }
 
         .card-title {
             font-size: 0.85rem;
             color: var(--accent-green);
             text-transform: uppercase;
-            margin-bottom: 5px;
         }
 
-        .card-value {
-            font-size: 2rem;
+        .card-value-display {
+            font-size: 1.5rem;
             font-weight: bold;
             color: #fff;
             font-family: var(--font-mono);
         }
 
         .unit {
-            font-size: 1rem;
+            font-size: 0.8rem;
             color: #aaa;
+        }
+
+        canvas {
+            max-height: 80px;
+            width: 100%;
+        }
+
+        /* Air Quality Badge */
+        .aq-badge {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .aq-good {
+            background-color: #27ae60;
+        }
+
+        .aq-fair {
+            background-color: #f39c12;
+        }
+
+        .aq-poor {
+            background-color: #c0392b;
         }
 
         footer {
@@ -160,7 +192,7 @@
             }
         }
 
-        @media (max-width: 768px) {
+        @media (max-width: 900px) {
             .container {
                 grid-template-columns: 1fr;
             }
@@ -219,10 +251,7 @@
         <!-- Live Video Feed -->
         <div class="video-feed">
             <div class="video-overlay">• LIVE FEED</div>
-            <!-- Vilib typically streams MJPEG at port 9000 -->
-            <!-- We use JS to dynamically set the host so it works on any network -->
             <img id="camera-stream" src="" alt="Waiting for Video Signal...">
-
             <!-- Manual Controls Overlay -->
             <div id="joystick-zone"></div>
             <div class="cam-controls">
@@ -234,21 +263,51 @@
 
         <!-- Sensor Data -->
         <div class="sensor-grid">
+            <!-- Temp -->
             <div class="card">
-                <div class="card-title">Air Pressure</div>
-                <div class="card-value"><span id="magnetic">--</span> <span class="unit">hPa</span></div>
+                <div class="card-header">
+                    <div class="card-title">Temperature</div>
+                    <div class="card-value-display"><span id="temp">--</span> <span class="unit">°C</span></div>
+                </div>
+                <canvas id="chart-temp"></canvas>
             </div>
+
+            <!-- Humidity & Pressure -->
             <div class="card">
-                <div class="card-title">Obstacle Dist</div>
-                <div class="card-value"><span id="moisture">--</span> <span class="unit">cm</span></div>
+                <div class="card-header">
+                    <div class="card-title">Atmosphere</div>
+                    <div class="card-value-display">
+                        <span id="humidity">--</span><span class="unit">%</span> /
+                        <span id="pressure" style="font-size:1rem">--</span><span class="unit">hPa</span>
+                    </div>
+                </div>
+                <!-- Dual line graph? just humidity for now to keep it clean -->
+                <canvas id="chart-humid"></canvas>
             </div>
+
+            <!-- Air Quality -->
             <div class="card">
-                <div class="card-title">Temperature</div>
-                <div class="card-value"><span id="temp">--</span> <span class="unit">°C</span></div>
+                <div class="card-header">
+                    <div class="card-title">Air Quality (VOC)</div>
+                    <span id="aq-badge" class="aq-badge aq-good">GOOD</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div class="card-value-display"><span id="co2">--</span> <span class="unit">Ω</span></div>
+                    <div style="font-size:0.8rem; color:#888;">Higher = Cleaner</div>
+                </div>
+                <canvas id="chart-gas"></canvas>
             </div>
-            <div class="card">
-                <div class="card-title">Air Quality (Gas)</div>
-                <div class="card-value"><span id="co2">--</span> <span class="unit">Ω</span></div>
+
+            <!-- Positional -->
+            <div class="card" style="flex-direction:row; justify-content:space-between; align-items:center;">
+                <div>
+                    <div class="card-title">Obstacle Dist</div>
+                    <div class="card-value-display"><span id="moisture">--</span> <span class="unit">cm</span></div>
+                </div>
+                <div style="text-align:right">
+                    <div class="card-title">Altitude</div>
+                    <div class="card-value-display"><span id="altitude">--</span> <span class="unit">m</span></div>
+                </div>
             </div>
         </div>
     </div>
@@ -258,10 +317,52 @@
     </footer>
 
     <script>
-        // Set camera stream source dynamically based on current host
+        // --- Setup Charts ---
+        Chart.defaults.color = '#888';
+        Chart.defaults.borderColor = '#333';
+
+        function createChart(ctx, label, color) {
+            return new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array(30).fill(''),
+                    datasets: [{
+                        label: label,
+                        data: Array(30).fill(null),
+                        borderColor: color,
+                        tension: 0.4,
+                        borderWidth: 2,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { display: false },
+                        y: { display: true }
+                    },
+                    animation: { duration: 0 }
+                }
+            });
+        }
+
+        const chartTemp = createChart(document.getElementById('chart-temp'), 'Temp', '#e74c3c');
+        const chartHumid = createChart(document.getElementById('chart-humid'), 'Humidity', '#3498db');
+        const chartGas = createChart(document.getElementById('chart-gas'), 'Gas Res', '#2ecc71');
+
+        function updateChart(chart, val) {
+            const data = chart.data.datasets[0].data;
+            data.push(val);
+            data.shift();
+            chart.update();
+        }
+
+        // --- Core Logic ---
+
         const protocol = window.location.protocol;
         const hostname = window.location.hostname;
-        // Vilib usually uses port 9000 and /mjpg route
         document.getElementById('camera-stream').src = `http://${hostname}:9000/mjpg`;
 
         async function updateSensors() {
@@ -269,13 +370,37 @@
                 const response = await fetch('/data');
                 const data = await response.json();
 
-                document.getElementById('magnetic').innerText = data.magnetic;
-                document.getElementById('moisture').innerText = data.moisture;
+                // Values
                 document.getElementById('temp').innerText = data.temp;
+                document.getElementById('humidity').innerText = data.humidity;
+                document.getElementById('pressure').innerText = data.magnetic; // mapped from backend
                 document.getElementById('co2').innerText = data.co2;
+                document.getElementById('moisture').innerText = data.moisture;
+                document.getElementById('altitude').innerText = data.altitude;
 
-                // Random latency for effect
+                // Ping
                 document.getElementById('ping').innerText = Math.floor(Math.random() * 20) + 10;
+
+                // Charts
+                updateChart(chartTemp, data.temp);
+                updateChart(chartHumid, data.humidity);
+                updateChart(chartGas, data.co2);
+
+                // AQI Logic (Gas Resistance)
+                // > 50k = Excellent, 10k-50k = Good, < 10k = Poor
+                const gas = data.co2;
+                const badge = document.getElementById('aq-badge');
+                if (gas > 50000) {
+                    badge.innerText = "EXCELLENT";
+                    badge.className = "aq-badge aq-good";
+                } else if (gas > 10000) {
+                    badge.innerText = "GOOD";
+                    badge.className = "aq-badge aq-fair";
+                } else {
+                    badge.innerText = "POOR (VOCs)";
+                    badge.className = "aq-badge aq-poor";
+                }
+
             } catch (error) {
                 console.error('Error fetching sensor data:', error);
             }
@@ -286,7 +411,6 @@
             try {
                 const res = await fetch(endpoint, { method: 'POST' });
                 const data = await res.json();
-                console.log(data);
                 updateMissionUI(data.active);
             } catch (e) {
                 console.error("Mission toggle failed", e);
@@ -312,9 +436,8 @@
             } catch (e) { }
         }
 
-        // Update every 500ms
-        setInterval(updateSensors, 500);
-        setInterval(checkStatus, 1000); // Check status periodically
+        setInterval(updateSensors, 1000); // 1Hz update for graphs
+        setInterval(checkStatus, 2000);
 
         // --- Manual Control Logic ---
         var joystickManager = nipplejs.create({
@@ -326,23 +449,17 @@
 
         joystickManager.on('move', function (evt, data) {
             if (!data.vector) return;
-            // Convert vector to Speed (Y) and Angle (X)
-            // Speed: data.vector.y (up is positive) * 100
-            // Angle: data.vector.x (right is positive) * 35
-
-            // Limit frequency?
             const speed = Math.round(data.vector.y * 100);
             const angle = Math.round(data.vector.x * 35);
             sendMove(speed, angle);
         });
 
         joystickManager.on('end', function () {
-            sendMove(0, 0); // Stop
+            sendMove(0, 0);
         });
 
         let currentPan = 0;
         let currentTilt = 0;
-
         function updateCam(pan, tilt) {
             if (pan !== null) currentPan = parseInt(pan);
             if (tilt !== null) currentTilt = parseInt(tilt);
@@ -354,11 +471,10 @@
             });
         }
 
-        // Rate limit move commands to avoid flooding
         let lastMoveTime = 0;
         function sendMove(speed, angle) {
             const now = Date.now();
-            if (now - lastMoveTime < 100 && speed !== 0) return; // Limit updates
+            if (now - lastMoveTime < 100 && speed !== 0) return;
             lastMoveTime = now;
 
             fetch('/api/control/move', {
@@ -369,5 +485,6 @@
         }
     </script>
 </body>
+
 
 </html>

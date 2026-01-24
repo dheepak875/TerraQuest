@@ -118,7 +118,8 @@ def get_sensor_data():
             'moisture': round(rover.distance, 1) if rover.distance else 0,
             'temp': rover.env_data.get('temp', 0),          
             'co2':  rover.env_data.get('gas', 0),
-            'humidity': rover.env_data.get('humidity', 0)
+            'humidity': rover.env_data.get('humidity', 0),
+            'altitude': rover.env_data.get('altitude', 0)
         }
         return jsonify(data)
         

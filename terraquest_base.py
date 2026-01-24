@@ -21,7 +21,7 @@ class TerraQuestRover:
         # Sensor Memory
         self.distance = 0
         self.cliff_sensors = [0, 0, 0]
-        self.env_data = {'temp': 0, 'humidity': 0, 'pressure': 0, 'gas': 0}
+        self.env_data = {'temp': 0, 'humidity': 0, 'pressure': 0, 'gas': 0, 'altitude': 0}
         
     def stop(self):
         self.px.stop()
