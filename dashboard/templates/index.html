@@ -68,8 +68,7 @@
             border: 1px solid var(--accent-green);
             border-radius: 8px;
             display: flex;
-            align-items: center;
-            justify-content: center;
+            flex-direction: row;
             position: relative;
             overflow: hidden;
             width: 100%;
@@ -78,33 +77,64 @@
         }
 
         .video-feed img {
-            width: 100%;
+            flex: 1;
             height: 100%;
             object-fit: cover;
-            /* Fills the box! */
+            min-width: 0;
+        }
+
+        .video-controls-side {
+            width: 220px;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            border-left: 1px solid var(--accent-green);
+        }
+
+        .cam-controls {
+            margin-bottom: 30px;
+        }
+
+        .cam-controls div {
+            font-size: 0.9rem;
+            color: var(--accent-cyan);
+            margin-bottom: 15px;
+        }
+
+        .cam-controls input {
+            width: 100%;
+            margin-top: 5px;
+        }
+
+        #joystick-zone {
+            flex: 1;
+            position: relative;
+            width: 100%;
+            min-height: 180px;
         }
 
         .thermal-card {
-            flex: 4;
-            /* 40% vertical space */
             background-color: #000;
             border: 2px solid #e74c3c;
             border-radius: 8px;
             position: relative;
             overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0 !important;
             width: 100%;
+            height: 100%;
+            display: block;
+            padding: 0 !important;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
             min-height: 0;
         }
 
         #thermal-canvas {
             width: 100%;
             height: 100%;
+            max-height: none !important;
             object-fit: fill;
             image-rendering: pixelated;
+            display: block;
         }
 
 
@@ -202,9 +232,22 @@
         /* ... utilities ... */
 
         .video-overlay {
+            position: absolute;
             font-size: 0.8rem;
-            top: 5px;
-            left: 5px;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+            font-family: var(--font-mono);
+            font-weight: bold;
+            pointer-events: none;
+        }
+
+        .live-blink {
+            color: #ff3e3e;
+            animation: blink 1s infinite;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 2px 6px;
+            border-radius: 3px;
         }
 
         /* Mobile adjust */
@@ -274,23 +317,25 @@
     <div class="container">
         <!-- Live Video Feed -->
         <div class="video-feed">
-            <div class="video-overlay">• LIVE FEED</div>
+            <div class="video-overlay live-blink">• LIVE FEED</div>
             <img id="camera-stream" src="" alt="Waiting for Video Signal...">
 
-            <!-- Manual Controls Overlay -->
-            <div id="joystick-zone"></div>
-            <div class="cam-controls">
-                <div>Pan: <input type="range" min="-90" max="90" value="0" oninput="updateCam(this.value, null)"></div>
-                <div style="margin-top:5px;">Tilt: <input type="range" min="-35" max="65" value="0"
-                        oninput="updateCam(null, this.value)"></div>
+            <!-- Manual Controls Sidebar -->
+            <div class="video-controls-side">
+                <div class="cam-controls">
+                    <div>Pan: <input type="range" min="-90" max="90" value="0" oninput="updateCam(this.value, null)">
+                    </div>
+                    <div style="margin-top:5px;">Tilt: <input type="range" min="-35" max="65" value="0"
+                            oninput="updateCam(null, this.value)"></div>
+                </div>
+                <div id="joystick-zone"></div>
             </div>
         </div>
 
-        <!-- Thermal Feed (New) -->
-        <div class="card" style="padding:0; overflow:hidden; position:relative;">
-            <div class="video-overlay" style="color:#e74c3c">• THERMAL</div>
-            <canvas id="thermal-canvas" width="32" height="24"
-                style="width:100%; height:100%; object-fit:contain; image-rendering: pixelated;"></canvas>
+        <!-- Thermal Feed -->
+        <div class="card thermal-card">
+            <div class="video-overlay" style="color:#e74c3c">• THERMAL SCANNER</div>
+            <canvas id="thermal-canvas" width="32" height="24"></canvas>
         </div>
 
         <!-- Sensor Data -->
@@ -583,7 +628,8 @@
             zone: document.getElementById('joystick-zone'),
             mode: 'static',
             position: { left: '50%', top: '50%' },
-            color: 'cyan'
+            color: 'var(--accent-cyan)',
+            size: 150
         });
 
         joystickManager.on('move', function (evt, data) {

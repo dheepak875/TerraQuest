@@ -123,8 +123,13 @@ class TerraQuestSensors:
         """
         if self.mag:
             try:
-                # Read raw values (Tuple return confirmed in test)
-                x, y, z = self.mag.get_measurement_xyz()
+                # Driver get_measurement_xyz may return False if read fails
+                reading = self.mag.get_measurement_xyz()
+                if not isinstance(reading, (list, tuple)) or len(reading) < 3:
+                     # print("Mag Read Failed: Not a tuple")
+                     return 0, 0
+                
+                x, y, z = reading
                 
                 # Calculate Total Field Magnitude
                 strength = math.sqrt(x*x + y*y + z*z)
@@ -134,19 +139,15 @@ class TerraQuestSensors:
                     self.mag_baseline = strength
                 
                 # Update baseline slowly (approx background field)
-                # Lower alpha = slower update = better detection of sustained magnets
                 self.mag_alpha = 0.02
                 self.mag_baseline = (self.mag_baseline * (1 - self.mag_alpha)) + (strength * self.mag_alpha)
                 
                 # Anomaly is the deviation from baseline
                 anomaly = abs(strength - self.mag_baseline)
                 
-                # Debug print to see what's happening
-                # print(f"MAG: {int(strength)} | Base: {int(self.mag_baseline)} | Anom: {int(anomaly)}")
-                
                 return int(strength), int(anomaly)
             except Exception as e:
-                print(f"Mag Error: {e}")
+                # print(f"Mag Runtime Error: {e}")
                 pass
         return 0, 0
 

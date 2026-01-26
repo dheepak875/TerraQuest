@@ -96,11 +96,6 @@ class TerraQuestRover:
         speed: -100 to 100
         angle: -30 (left) to 30 (right)
         """
-        # Safety: Do not allow manual control if mission is active
-        if self.mission_active:
-            print("Ignoring manual command: Mission Active")
-            return
-            
         self.px.set_dir_servo_angle(angle)
         
         if speed == 0:
@@ -120,70 +115,42 @@ class TerraQuestRover:
         self.px.set_cam_tilt_angle(tilt)
 
     def run_step(self):
-        """Execute one iteration of the rover logic"""
-        # Priority 1: Cliff
-        if self.check_cliff():
-            self.avoid_cliff()
-            return
-        
-        # Priority 2: Obstacle
-        if self.check_obstacle():
-            self.avoid_obstacle()
-            return
-        
-        # Default: Scouting
-        self.move_forward()
+        """Execute one iteration of the rover logic - Now purely for telemetry/checks"""
+        # We still want to check for cliffs/obstacles for telemetry alerts
+        self.check_cliff()
+        self.check_obstacle()
+        # move_forward() is REMOVED to prevent autonomous movement in manual mode
+        pass
 
     def run(self):
-        print("TerraQuest Explorer: Mission Start")
+        print("TerraQuest Explorer: Thread Running")
         self.running = True
+        
         try:
             while self.running:
                 current_time = time.time()
                 
-                if self.mission_active:
-                    self.run_step()
-                    # Update environmental sensors occasionally
-                    if current_time - self.last_env_time > 1.0:
-                        self.env_data = self.sensors.read_environment()
-                        self.last_env_time = current_time
-                    
-                    if current_time - self.last_env_time > 1.0:
-                        self.env_data = self.sensors.read_environment()
-                        self.last_env_time = current_time
-                    
-                    # Read Magnetometer (Very Frequent - 20Hz target)
-                    if current_time - self.last_mag_time > 0.05:
-                        s, a = self.sensors.get_magnetic_data()
-                        self.mag_data['strength'] = s
-                        self.mag_data['anomaly'] = a
-                        self.last_mag_time = current_time
-                        
-                        # Debug Print every 1s
-                        if int(current_time) % 2 == 0 and current_time % 1.0 < 0.05:
-                             print(f"Mag: {s} | Anom: {a}")
-
-                    # Read Thermal (Slow - 4Hz max, limits loop speed due to 0.1s I2C blocking)
-                    if current_time - self.last_thermal_time > 0.25:
-                        self.thermal_frame = self.sensors.get_thermal_frame()
-                        self.last_thermal_time = current_time
-
-                    time.sleep(0.005) # Very tight loop for responsiveness
-                else:
-                    self.stop()
-                    # Keep updating sensors even when stopped
-                    if current_time - self.last_env_time > 1.0:
-                        self.env_data = self.sensors.read_environment()
-                        self.last_env_time = current_time
-                        # Print status occasionally
-                        print(f"Idle Sensors - Mag: {self.mag_data.get('strength')}")
-                    
+                # 1. Telemetry / Sensors (Always active)
+                if current_time - self.last_env_time > 2.0:
+                    self.env_data = self.sensors.read_environment()
+                    self.last_env_time = current_time
+                
+                if current_time - self.last_mag_time > 0.1:
                     s, a = self.sensors.get_magnetic_data()
                     self.mag_data['strength'] = s
                     self.mag_data['anomaly'] = a
+                    self.last_mag_time = current_time
+                
+                if current_time - self.last_thermal_time > 0.5:
                     self.thermal_frame = self.sensors.get_thermal_frame()
-                    
-                    time.sleep(0.2) # Idling
+                    self.last_thermal_time = current_time
+
+                # 2. Control Logic
+                # This was the old "Mission" mode. 
+                # We'll leave it as a placeholder or remove it.
+                # For now, it just means "telemetry is active and rover is 'deployed'"
+                
+                time.sleep(0.05)
                 
         except KeyboardInterrupt:
             print("Mission Aborted.")
