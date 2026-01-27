@@ -12,38 +12,31 @@ print("SCOUT MODULE LOADED - V2 (FIXED PINS/SENSORS)")
 # Tuning Constants("SCOUT MODULE LOADED - V2 (NO TTS IMPORT)")
 
 # Tuning Constants
-CLIFF_THRESHOLD = 200     # Darker < 200 means drop-off or black line
+CLIFF_THRESHOLD = 200     # LOW Values (< 200) = Cliff/Void. Table is lighter (~300+).
 OBSTACLE_DIST_CM = 25     # Arc turn if closer than this
 MAG_EUREKA_GAUSS = 0.6    # Anomaly threshold
-NORMAL_SPEED = 30
-TURN_SPEED = 40
-REVERSE_SPEED = -40
+NORMAL_SPEED = 15         # Reduced for table safety
+TURN_SPEED = 30
+REVERSE_SPEED = -30       # Slower reverse too
 
 class TerraQuestScout:
     def __init__(self, px_instance, sensors_instance, sio_client=None):
         self.px = px_instance
         self.sensors = sensors_instance
         
-        # Fixed: robot_hat.Grayscale_Module requires ADC objects
-        try:
-            self.gs = Grayscale_Module(ADC("A0"), ADC("A1"), ADC("A2"))
-        except Exception as e:
-            print(f"Grayscale Init Error: {e}")
-            self.gs = None
-            
-        # Fixed: robot_hat.Ultrasonic requires Pin objects
-        try:
-            self.us = Ultrasonic(Pin("D2"), Pin("D3"))
-        except Exception as e:
-            print(f"Ultrasonic Init Error: {e}")
-            self.us = None
+        # We will use manual comparison logic instead of px.get_cliff_status
+        # because the internal calibration logic is opaque.
+        # self.px.set_cliff_reference([600, 600, 600]) 
 
-        # TTS not in robot_hat, using espeak fallback
         self.music = Music()
         self.sio = sio_client
         
         self.running = False
         self.status = "IDLE"
+
+    # ... (say/start/stop methods remain same) ...
+    # Cleaning up accidental duplicate block
+
         
     def say(self, text):
         """Fallback TTS using espeak"""
@@ -88,13 +81,14 @@ class TerraQuestScout:
     def sensor_loop(self):
         """High-frequency sensor polling"""
         while self.running:
-            # 1. Edge Detection (Critical - 50Hz)
-            cliff_vals = self.gs.get_grayscale_data()
+            # 1. Edge Detection
+            # Manual Check is safer than black-box library logic
+            cliff_vals = self.px.get_grayscale_data()
             if any(v < CLIFF_THRESHOLD for v in cliff_vals):
                 self.cliff_detected = True
             else:
                 self.cliff_detected = False
-            
+
             # 2. Magnetometer (Eureka - 20Hz)
             if self.sensors.mag:
                 try:
@@ -106,7 +100,8 @@ class TerraQuestScout:
                     pass
 
             # 3. Ultrasonic (Obstacle - 10Hz)
-            dist = self.us.read()
+            # Use px native helper
+            dist = self.px.get_distance()
             if dist > 0 and dist < OBSTACLE_DIST_CM:
                 self.obstacle_detected = True
             else:
@@ -120,38 +115,56 @@ class TerraQuestScout:
             # PRIORITY 1: CLIFF / EDGE
             if self.cliff_detected:
                 self.status = "CLIFF DETECTED"
-                print("SCOUT: CLIFF! Reversing...")
+                print("SCOUT: CLIFF! Stopping & Reversing...")
+                self.px.stop()
+                time.sleep(0.1)
+                
                 self.px.set_dir_servo_angle(0)
                 self.px.forward(REVERSE_SPEED)
-                time.sleep(2.0)
+                time.sleep(1.0) # Reduced from 2.0s to prevent backing off the other side
+                self.px.stop()
                 
                 print("SCOUT: Pivoting...")
                 self.px.set_dir_servo_angle(40)
+                # Turn carefully
                 self.px.forward(NORMAL_SPEED)
-                time.sleep(1.0) 
+                time.sleep(0.8) 
                 
                 self.px.set_dir_servo_angle(0)
                 continue
 
-            # PRIORITY 2: EUREKA (MAGNET) - PERSISTENT STOP
+            # PRIORITY 2: EUREKA (MAGNET) - ALERT ONLY
             if self.eureka_event:
-                self.status = "EUREKA DETECTED"
-                print("SCOUT: EUREKA! Stopping Engine.")
-                self.px.stop()
-                
+                # We used to stop here, now we just alert and continue
                 if self.sio:
                     self.sio.emit('alert', {'type': 'eureka', 'msg': 'Subsurface Anomaly Detected!'})
                 
-                self.say("Subsurface Anomaly Detected. Scouting Suspended.")
-                self.running = False
-                break 
+                # Reset event so we don't spam alerts forever (or handle debounce elsewhere)
+                self.eureka_event = False 
+                
+                # self.status = "EUREKA DETECTED"
+                # print("SCOUT: EUREKA! Stopping Engine.")
+                # self.px.stop()
+                # self.say("Subsurface Anomaly Detected. Scouting Suspended.")
+                # self.running = False
+                # break 
 
             # PRIORITY 3: OBSTACLE
             if self.obstacle_detected:
                 self.status = "AVOIDING OBSTACLE"
-                self.px.set_dir_servo_angle(30)
+                print("SCOUT: Obstacle! Taking evasive action.")
+                self.px.stop()
+                time.sleep(0.2)
+                
+                # Back up slightly first
+                self.px.set_dir_servo_angle(0)
+                self.px.forward(REVERSE_SPEED)
+                time.sleep(0.5)
+                
+                # Then turn
+                self.px.set_dir_servo_angle(35)
                 self.px.forward(NORMAL_SPEED)
-                time.sleep(0.1)
+                time.sleep(0.8)
                 continue
 
             # DEFAULT: FORWARD SCOUT

@@ -17,6 +17,18 @@ app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 CORS(app)
 
+import logging
+# Completely silence Flask/Werkzeug request logging
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
+log.disabled = True
+
+# Also override the internal request logger to be sure
+from werkzeug.serving import WSGIRequestHandler
+def log_request(self, code='-', size='-'): 
+    return
+WSGIRequestHandler.log_request = log_request
+
 def start_vilib():
     if VILIB_AVAILABLE:
         Vilib.camera_start(vflip=False, hflip=False)

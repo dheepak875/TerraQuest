@@ -309,8 +309,9 @@
         <div style="font-family: var(--font-mono); font-size: 0.9rem; margin-top: 5px;">STATUS: <span
                 id="mission-status">IDLE</span> // CONNECTION: SECURE</div>
         <div style="margin-top: 15px;">
-            <button id="btn-start" class="btn btn-start" onclick="toggleMission(true)">START MISSION</button>
-            <button id="btn-stop" class="btn btn-stop" onclick="toggleMission(false)">STOP MISSION</button>
+            <button id="btn-start" class="btn btn-start" onclick="toggleMission(true)" disabled>AUTONOMOUS SCOUTING
+                (DISABLED)</button>
+            <button id="btn-stop" class="btn btn-stop" onclick="toggleMission(false)" disabled>STOP MISSION</button>
         </div>
     </header>
 
@@ -542,14 +543,20 @@
             }
         }
 
-        async function toggleMission(active) {
-            const endpoint = active ? '/api/mission/start' : '/api/mission/stop';
+        async function toggleMission(start) {
+            const endpoint = start ? '/api/scout/start' : '/api/scout/stop';
             try {
                 const res = await fetch(endpoint, { method: 'POST' });
                 const data = await res.json();
-                updateMissionUI(data.active);
+                console.log(data);
+                // Update UI based on scout status not manual mission
+                if (data.status === 'Scout Started') {
+                    updateMissionUI(true);
+                } else if (data.status === 'Scout Stopped') {
+                    updateMissionUI(false);
+                }
             } catch (e) {
-                console.error("Mission toggle failed", e);
+                console.error("Scout toggle failed", e);
             }
         }
 
@@ -619,7 +626,7 @@
         }
 
         // Polling Rates
-        setInterval(updateSensors, 100); // 10Hz for fast Metal Detector response
+        setInterval(updateSensors, 500); // 2Hz for normal graph speed
         setInterval(updateThermal, 500); // 2Hz for thermal (heavy payload)
         setInterval(checkStatus, 2000);  // Low priority status checks
 

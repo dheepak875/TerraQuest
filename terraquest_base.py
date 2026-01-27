@@ -12,7 +12,7 @@ class TerraQuestRover:
         
         # Configuration
         self.cruise_speed = 20  # forward speed
-        self.cliff_threshold = 100 # Calibration: Table ~300-400, Cliff ~5
+        self.cliff_threshold = 200 # Low Value (<200) is Cliff. Table is > 300.
         
         # Thread control flags
         self.running = False  # Main loop active?
@@ -49,10 +49,12 @@ class TerraQuestRover:
         # Let's assume standard "Cliff Detection" means detecting the edge of a table (drop to floor).
         # We'll use a safe threshold. If it drops drastically, it's a cliff.
         
-        # NOTE: User should calibrate. For now, if any reading is < threshold, we treat as cliff.
+        # NOTE: User should calibrate.
+        # Based on calibration: Table ~380-580 or ~300+. Cliff ~60-80.
+        # So if any reading is < threshold, we treat as cliff.
         if any(r < self.cliff_threshold for r in readings): 
-            # DEBUG: Print why we triggered
-            print(f"Cliff Detected! Readings: {readings} < Threshold: {self.cliff_threshold}")
+            # DEBUG: Print why we triggered (Silenced for autonomous operation)
+            # print(f"Cliff Detected! Readings: {readings} < Threshold: {self.cliff_threshold}")
             return True
         return False
 
