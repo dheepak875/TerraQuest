@@ -22,12 +22,12 @@ class TerraQuestRover:
         self.distance = 0
         self.cliff_sensors = [0, 0, 0]
         self.env_data = {'temp': 0, 'humidity': 0, 'pressure': 0, 'gas': 0, 'altitude': 0}
-        self.mag_data = {'strength': 0, 'anomaly': 0}
+        self.light_data = {'als': 0, 'uvs': 0}
         self.thermal_frame = []
         
         # Timing trackers
         self.last_env_time = 0
-        self.last_mag_time = 0
+        self.last_light_time = 0
         self.last_thermal_time = 0
         
     def stop(self):
@@ -137,11 +137,11 @@ class TerraQuestRover:
                     self.env_data = self.sensors.read_environment()
                     self.last_env_time = current_time
                 
-                if current_time - self.last_mag_time > 0.1:
-                    s, a = self.sensors.get_magnetic_data()
-                    self.mag_data['strength'] = s
-                    self.mag_data['anomaly'] = a
-                    self.last_mag_time = current_time
+                if current_time - self.last_light_time > 0.1:
+                    als, uvs = self.sensors.get_light_data()
+                    self.light_data['als'] = als
+                    self.light_data['uvs'] = uvs
+                    self.last_light_time = current_time
                 
                 if current_time - self.last_thermal_time > 0.5:
                     self.thermal_frame = self.sensors.get_thermal_frame()

@@ -18,43 +18,34 @@ except ImportError:
     MLX_AVAILABLE = False
     print("Warning: adafruit-circuitpython-mlx90640 not installed.")
 
-# Try to import Qwiic MMC5983MA
+# Try to import Adafruit LTR390
 try:
-    import qwiic_mmc5983ma
-    import math
-    MAG_AVAILABLE = True
+    import adafruit_ltr390
+    LTR_AVAILABLE = True
 except ImportError:
-    MAG_AVAILABLE = False
-    print("Warning: sparkfun-qwiic-mmc5983ma not installed.")
+    LTR_AVAILABLE = False
+    print("Warning: adafruit-circuitpython-ltr390 not installed.")
 
 class TerraQuestSensors:
     def __init__(self):
         self.bme = None
         self.mlx = None
-        self.mag = None
+        self.ltr = None
         self.thermal_frame = [0] * 768
-        
-        # Mag Baseline
-        self.mag_baseline = 0
-        self.mag_alpha = 0.05 # Low pass filter factor for baseline
         
         self.init_bme688()
         self.init_mlx90640()
-        self.init_mmc5983ma()
+        self.init_ltr390()
     
-    def init_mmc5983ma(self):
-        if MAG_AVAILABLE:
+    def init_ltr390(self):
+        if LTR_AVAILABLE:
             try:
-                self.mag = qwiic_mmc5983ma.QwiicMMC5983MA()
-                if self.mag.connected == False:
-                    self.mag = None
-                    print("MMC5983MA not detected.")
-                else:
-                    self.mag.begin()
-                    print("MMC5983MA Magnetometer Initialized.")
+                i2c = board.I2C()
+                self.ltr = adafruit_ltr390.LTR390(i2c)
+                print("LTR390 UV/Light Sensor Initialized.")
             except Exception as e:
-                print(f"Error initializing MMC5983MA: {e}")
-                self.mag = None
+                print(f"Error initializing LTR390: {e}")
+                self.ltr = None
     
     def init_mlx90640(self):
         if MLX_AVAILABLE:
@@ -117,37 +108,19 @@ class TerraQuestSensors:
                 pass
         return []
 
-    def get_magnetic_data(self):
+    def get_light_data(self):
         """
-        Returns (total_strength, anomaly_score)
+        Returns (als, uvs)
+        als: Ambient Light Sensor (Lux-ish raw)
+        uvs: UV Sensor (Raw UV Index)
         """
-        if self.mag:
+        if self.ltr:
             try:
-                # Driver get_measurement_xyz may return False if read fails
-                reading = self.mag.get_measurement_xyz()
-                if not isinstance(reading, (list, tuple)) or len(reading) < 3:
-                     # print("Mag Read Failed: Not a tuple")
-                     return 0, 0
-                
-                x, y, z = reading
-                
-                # Calculate Total Field Magnitude
-                strength = math.sqrt(x*x + y*y + z*z)
-                
-                # Initialize baseline if first run
-                if self.mag_baseline == 0:
-                    self.mag_baseline = strength
-                
-                # Update baseline slowly (approx background field)
-                self.mag_alpha = 0.02
-                self.mag_baseline = (self.mag_baseline * (1 - self.mag_alpha)) + (strength * self.mag_alpha)
-                
-                # Anomaly is the deviation from baseline
-                anomaly = abs(strength - self.mag_baseline)
-                
-                return int(strength), int(anomaly)
+                als = self.ltr.light
+                uvs = self.ltr.uvs
+                return int(als), int(uvs)
             except Exception as e:
-                # print(f"Mag Runtime Error: {e}")
+                # print(f"LTR Runtime Error: {e}")
                 pass
         return 0, 0
 

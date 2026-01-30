@@ -86,25 +86,13 @@ class TerraQuestScout:
             else:
                 self.cliff_detected = False
             
-            # 2. Magnetometer (Eureka - 20Hz)
-            # Use raw gausses to detect spike > 0.6
-            # We assume get_magnetic_data returns tuple (strength_ut, anomaly_score)
-            # Actually let's use the object directly if possible for Gauss
-            if self.sensors.mag:
-                # Driver should have get_measurement_xyz_gauss
+            # 2. UV Sensor (High Value Event)
+            if self.sensors.ltr:
                 try:
-                    # Note: We added get_measurement_xyz() previously to driver. 
-                    # Let's rely on anomaly score from sensors class for simplicity first, 
-                    # or calc gauss if we trust calibration.
-                    # Anomaly score ~800-1500 was strong. 
-                    # Let's grab Raw UT strength. 1 Gauss = 100 uT. 0.6 G = 60 uT.
-                    s_ut, anomaly = self.sensors.get_magnetic_data()
-                    
-                    # If Anomaly score is extremely high (spike)
-                    if anomaly > 2000: # Tuned higher for "Eureka" vs just "Detection"
-                         # Debounce slightly or just trigger?
-                         if not self.eureka_event: # Trigger once
-                             self.eureka_event = True
+                    als, uvs = self.sensors.get_light_data()
+                    if uvs > 8: # High UV Index
+                        if not self.eureka_event:
+                            self.eureka_event = True
                 except:
                     pass
 

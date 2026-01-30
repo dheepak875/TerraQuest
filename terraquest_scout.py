@@ -89,13 +89,14 @@ class TerraQuestScout:
             else:
                 self.cliff_detected = False
 
-            # 2. Magnetometer (Eureka - 20Hz)
-            if self.sensors.mag:
+            # 2. UV Sensor (High Value Event)
+            # Replaces Magnetometer Eureka
+            if self.sensors.ltr:
                 try:
-                    s_ut, anomaly = self.sensors.get_magnetic_data()
-                    if anomaly > 2000: 
-                         if not self.eureka_event: 
-                             self.eureka_event = True
+                    als, uvs = self.sensors.get_light_data()
+                    if uvs > 8: # High UV Index
+                        if not self.eureka_event:
+                            self.eureka_event = True
                 except:
                     pass
 
