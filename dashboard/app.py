@@ -194,6 +194,8 @@ def get_sensor_data():
     data = {
         'lux': rover.light_data['als'], 
         'uv_index': rover.light_data['uvs'],
+        'magnetic': rover.mag_data['strength'],
+        'mag_anomaly': rover.mag_data['anomaly'],
         'moisture': round(rover.distance, 1) if rover.distance else 0,
         'temp': rover.env_data.get('temp', 0),          
         'co2':  rover.env_data.get('gas', 0),
@@ -202,9 +204,9 @@ def get_sensor_data():
         'pressure': rover.env_data.get('pressure', 0)
     }
     # Calculate AWS (Archeological Worthiness Score)
-    # New Logic: Based on UV Index. High UV might mean "exposed artifact"?
-    # Simple map: UV * 10, clamped at 88.
-    raw_aws = int(data['uv_index'] * 10)
+    # Combined Logic: UV (Exposed) + Mag Anomaly (Buried)
+    # Mag Anomaly usually 0-100 (uT). 
+    raw_aws = int((data['uv_index'] * 5) + (data['mag_anomaly'] / 2))
     data['aws'] = min(88, raw_aws)
 
     # Calculate TSS (Terrain Safety Score)
@@ -220,7 +222,8 @@ def get_sensor_data():
     
     # Fallback if rover not ready
     data = {
-        'lux': 0, 'uv_index': 0, 'moisture': 0, 'temp': 0, 'co2': 0, 'humidity': 0, 'altitude': 0, 'pressure': 0,
+        'lux': 0, 'uv_index': 0, 'magnetic': 0, 'mag_anomaly': 0,
+        'moisture': 0, 'temp': 0, 'co2': 0, 'humidity': 0, 'altitude': 0, 'pressure': 0,
         'aws': 0, 'tss': 0
     }
     return jsonify(data)

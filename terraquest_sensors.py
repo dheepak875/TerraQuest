@@ -1,6 +1,8 @@
 import time
 import board
 import busio
+import math
+
 
 # Try to import the Adafruit BME680 library
 try:
@@ -26,16 +28,30 @@ except ImportError:
     LTR_AVAILABLE = False
     print("Warning: adafruit-circuitpython-ltr390 not installed.")
 
+# Try to import MMC5603
+try:
+    import adafruit_mmc56x3
+    MAG_AVAILABLE = True
+except ImportError:
+    MAG_AVAILABLE = False
+    print("Warning: adafruit-circuitpython-mmc56x3 not installed.")
+
 class TerraQuestSensors:
     def __init__(self):
         self.bme = None
         self.mlx = None
         self.ltr = None
+        self.mag = None
         self.thermal_frame = [0] * 768
+
+        # Mag Baseline
+        self.mag_baseline = 0
+        self.mag_alpha = 0.05 
         
         self.init_bme688()
         self.init_mlx90640()
         self.init_ltr390()
+        self.init_mmc5603()
     
     def init_ltr390(self):
         if LTR_AVAILABLE:
@@ -46,6 +62,17 @@ class TerraQuestSensors:
             except Exception as e:
                 print(f"Error initializing LTR390: {e}")
                 self.ltr = None
+
+    def init_mmc5603(self):
+        if MAG_AVAILABLE:
+            try:
+                i2c = board.I2C()
+                self.mag = adafruit_mmc56x3.MMC5603(i2c)
+                # Default initialization is safest
+                print("MMC5603 Magnetometer Initialized.")
+            except Exception as e:
+                print(f"Error initializing MMC5603: {e}")
+                self.mag = None
     
     def init_mlx90640(self):
         if MLX_AVAILABLE:
@@ -121,6 +148,32 @@ class TerraQuestSensors:
                 return int(als), int(uvs)
             except Exception as e:
                 # print(f"LTR Runtime Error: {e}")
+                pass
+        return 0, 0
+
+    def get_magnetic_data(self):
+        """
+        Returns (strength, anomaly)
+        """
+        if self.mag:
+            try:
+                # Get raw magnetic flux (uTesla)
+                x, y, z = self.mag.magnetic
+                # Calculate total strength
+                strength = math.sqrt(x*x + y*y + z*z)
+
+                # Baseline tracking
+                if self.mag_baseline == 0:
+                    self.mag_baseline = strength
+                
+                # Update baseline
+                self.mag_baseline = (self.mag_baseline * (1 - self.mag_alpha)) + (strength * self.mag_alpha)
+                
+                # Anomaly is deviation
+                anomaly = abs(strength - self.mag_baseline)
+                
+                return int(strength), int(anomaly)
+            except Exception:
                 pass
         return 0, 0
 
