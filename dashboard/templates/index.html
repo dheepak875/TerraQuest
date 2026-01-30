@@ -143,7 +143,8 @@
         .sensor-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            grid-template-rows: 1fr 1fr;
+            grid-template-rows: repeat(3, 1fr);
+            /* Updated for 6 items */
             gap: 10px;
             height: 100%;
             overflow-y: auto;
@@ -356,7 +357,19 @@
                 <canvas id="chart-mag"></canvas>
             </div>
 
-            <!-- Humidity & Pressure -->
+            <!-- AWS Panel -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Arch. Worthiness</div>
+                </div>
+                <div class="card-value-display" style="text-align: center;">
+                    <span id="aws-score" style="color:var(--accent-cyan); font-size: 2rem;">--</span>
+                    <span class="unit">/100</span>
+                </div>
+                <div style="font-size:0.7rem; color:#888; text-align:center;">Max 88</div>
+            </div>
+
+            <!-- Atmosphere -->
             <div class="card">
                 <div class="card-header">
                     <div class="card-title">Atmosphere</div>
@@ -365,8 +378,19 @@
                         <span id="pressure" style="font-size:1rem">--</span><span class="unit">hPa</span>
                     </div>
                 </div>
-                <!-- Dual line graph? just humidity for now to keep it clean -->
                 <canvas id="chart-humid"></canvas>
+            </div>
+
+            <!-- TSS Panel -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Terrain Safety</div>
+                </div>
+                <div class="card-value-display" style="text-align: center;">
+                    <span id="tss-score" style="color:#2ecc71; font-size: 2rem;">--</span>
+                    <span class="unit">/100</span>
+                </div>
+                <div style="font-size:0.7rem; color:#888; text-align:center;">Safe &gt; 80</div>
             </div>
 
             <!-- Air Quality -->
@@ -491,6 +515,10 @@
                 const magAnomaly = data.mag_anomaly;
                 document.getElementById('mag-strength').innerText = magStrength;
                 document.getElementById('mag-anomaly').innerText = magAnomaly;
+
+                // NEW: AWS and TSS
+                document.getElementById('aws-score').innerText = data.aws;
+                document.getElementById('tss-score').innerText = data.tss;
 
                 // Ping
                 document.getElementById('ping').innerText = Math.floor(Math.random() * 20) + 10;

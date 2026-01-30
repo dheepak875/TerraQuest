@@ -202,11 +202,27 @@ def get_sensor_data():
         # Pass pressure separately if needed, previously mapped to 'magnetic'
         'pressure': rover.env_data.get('pressure', 0)
     }
+    # Calculate AWS (Archeological Worthiness Score)
+    # 0-100, clamped at 88. based on mag_anomaly.
+    # Anomaly usually 0-3000+. 
+    raw_aws = int(data['mag_anomaly'] / 20) 
+    data['aws'] = min(88, raw_aws)
+
+    # Calculate TSS (Terrain Safety Score)
+    # 0-100. Based on temp and gas (air quality).
+    # Gas: >50k excellent (100), <10k poor (0). Linear-ish map.
+    # Temp: Ideal 20-30. Penalize deviation.
+    gas_score = min(100, int(data['co2'] / 500)) # 50000 -> 100
+    temp_diff = abs(25 - data['temp'])
+    temp_score = max(0, 100 - int(temp_diff * 5))
+    data['tss'] = int((gas_score + temp_score) / 2)
+
     return jsonify(data)
     
     # Fallback if rover not ready
     data = {
-        'magnetic': 0, 'mag_anomaly': 0, 'moisture': 0, 'temp': 0, 'co2': 0, 'humidity': 0, 'altitude': 0, 'pressure': 0
+        'magnetic': 0, 'mag_anomaly': 0, 'moisture': 0, 'temp': 0, 'co2': 0, 'humidity': 0, 'altitude': 0, 'pressure': 0,
+        'aws': 0, 'tss': 0
     }
     return jsonify(data)
 
