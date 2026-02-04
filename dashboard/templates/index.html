@@ -43,7 +43,8 @@
 
         .container {
             display: grid;
-            grid-template-columns: 2fr 1fr;
+            grid-template-columns: 1fr 1fr;
+            /* Equal split - Smaller Video, Wider Data */
             gap: 15px;
             max-width: 100%;
             height: calc(100vh - 100px);
@@ -61,15 +62,23 @@
             height: 100%;
         }
 
+        .right-col {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            height: 100%;
+            overflow: hidden;
+            /* Important for inner scroll */
+        }
+
         .video-feed {
             flex: 6;
-            /* 60% vertical space */
             background-color: #000;
             border: 1px solid var(--accent-green);
             border-radius: 8px;
             display: flex;
-            flex-direction: row;
             position: relative;
+            /* Key for overlay */
             overflow: hidden;
             width: 100%;
             height: auto;
@@ -77,41 +86,65 @@
         }
 
         .video-feed img {
-            flex: 1;
+            width: 100%;
             height: 100%;
             object-fit: cover;
-            min-width: 0;
         }
 
+        /* Overlay Controls */
         .video-controls-side {
-            width: 220px;
-            background-color: rgba(0, 0, 0, 0.9);
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: auto;
+            /* Let content dictate height */
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0) 100%);
             display: flex;
-            flex-direction: column;
-            padding: 15px;
-            border-left: 1px solid var(--accent-green);
+            flex-direction: row;
+            /* Horizontal layout */
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 20px;
+            box-sizing: border-box;
+            /* Ensure padding includes width */
+            border: none;
+            pointer-events: none;
+            /* Let clicks pass through empty areas */
+        }
+
+        /* Make children interactive */
+        .video-controls-side>* {
+            pointer-events: auto;
         }
 
         .cam-controls {
-            margin-bottom: 30px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--accent-cyan);
+            min-width: 150px;
+            margin-bottom: 0;
+            /* Align with bottom */
         }
 
         .cam-controls div {
-            font-size: 0.9rem;
+            font-size: 0.8rem;
             color: var(--accent-cyan);
-            margin-bottom: 15px;
+            margin-bottom: 5px;
+            font-weight: bold;
         }
 
         .cam-controls input {
             width: 100%;
-            margin-top: 5px;
+            cursor: pointer;
         }
 
         #joystick-zone {
-            flex: 1;
+            width: 150px;
+            height: 150px;
             position: relative;
-            width: 100%;
-            min-height: 180px;
+            /* Joystick lib handles internals */
         }
 
         .thermal-card {
@@ -121,7 +154,8 @@
             position: relative;
             overflow: hidden;
             width: 100%;
-            height: 100%;
+            aspect-ratio: 1 / 1;
+            /* Force Square */
             display: block;
             padding: 0 !important;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
@@ -131,8 +165,8 @@
         #thermal-canvas {
             width: 100%;
             height: 100%;
-            max-height: none !important;
             object-fit: fill;
+            /* Stretch to square */
             image-rendering: pixelated;
             display: block;
         }
@@ -143,12 +177,12 @@
         .sensor-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            grid-template-rows: repeat(3, 1fr);
-            /* Updated for 6 items */
+            grid-auto-rows: min-content;
             gap: 10px;
             height: 100%;
             overflow-y: auto;
             max-height: none;
+            padding-right: 5px;
         }
 
         .compact-card {
@@ -264,6 +298,16 @@
                 flex: none;
             }
 
+            .video-controls-side {
+                position: relative;
+                background: black;
+                border-top: 1px solid var(--accent-green);
+                height: auto;
+                pointer-events: auto;
+                flex-direction: row;
+                /* Keep row logic */
+            }
+
             .thermal-card {
                 height: 200px;
                 flex: none;
@@ -317,8 +361,8 @@
     </header>
 
     <div class="container">
-        <!-- Live Video Feed -->
-        <div class="video-feed">
+        <!-- Live Video Feed (Left Column) -->
+        <div class="video-feed" style="height: 100%;">
             <div class="video-overlay live-blink">• LIVE FEED</div>
             <img id="camera-stream" src="" alt="Waiting for Video Signal...">
 
@@ -334,111 +378,128 @@
             </div>
         </div>
 
-        <!-- Thermal Feed -->
-        <div class="card thermal-card">
-            <div class="video-overlay" style="color:#e74c3c">• THERMAL SCANNER</div>
-            <canvas id="thermal-canvas" width="32" height="24"></canvas>
-        </div>
+        <!-- Right Column Data Stack -->
+        <div class="right-col">
 
-        <!-- Sensor Data -->
-        <div class="sensor-grid">
-            <!-- Light Sensor -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">Light Intensity</div>
-                </div>
-                <div class="card-value-display">
-                    <span id="lux-val">--</span> <span class="unit">Lux</span>
-                </div>
-                <canvas id="chart-light"></canvas>
-            </div>
+            <!-- Top Panels: Thermal + Scores -->
+            <div style="display: flex; gap: 10px; height: 180px; flex: 0 0 auto;">
 
-            <!-- UV Sensor -->
-            <div class="card" id="uv-card">
-                <div class="card-header">
-                    <div class="card-title">UV Monitor</div>
-                    <span id="uv-status" class="aq-badge aq-good">NORMAL</span>
-                </div>
-                <div class="card-value-display" style="text-align: center;">
-                    <span id="uv-val" style="color:#e74c3c; font-size: 2rem;">0</span>
-                    <span class="unit">Index</span>
-                </div>
-                <div style="font-size:0.7rem; color:#888; text-align:center;">Safe &lt; 3</div>
-            </div>
-
-            <!-- Metal Detector (Restored) -->
-            <div class="card" id="mag-card">
-                <div class="card-header">
-                    <div class="card-title">Metal Detector</div>
-                    <span id="mag-status" class="aq-badge aq-good">CLEAR</span>
-                </div>
-                <!-- Field Strength & Anomaly Score -->
-                <div style="display:flex; justify-content:space-between; align-items:flex-end;">
-                    <div class="card-value-display"><span id="mag-strength">--</span> <span class="unit">µT</span></div>
-                    <div style="font-size:0.8rem; color:#aaa;">ANOMALY: <span id="mag-anomaly"
-                            style="color:#e74c3c">0</span></div>
-                </div>
-                <canvas id="chart-mag"></canvas>
-            </div>
-
-            <!-- AWS Panel -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">Arch. Worthiness</div>
-                </div>
-                <div class="card-value-display" style="text-align: center;">
-                    <span id="aws-score" style="color:var(--accent-cyan); font-size: 2rem;">--</span>
-                    <span class="unit">/100</span>
-                </div>
-                <div style="font-size:0.7rem; color:#888; text-align:center;">Max 88</div>
-            </div>
-
-            <!-- Atmosphere -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">Atmosphere</div>
-                    <div class="card-value-display">
-                        <span id="humidity">--</span><span class="unit">%</span> /
-                        <span id="pressure" style="font-size:1rem">--</span><span class="unit">hPa</span>
+                <!-- Thermal Feed (Square, Fixed) -->
+                <div class="card thermal-card"
+                    style="flex: 0 0 180px; height: 180px; padding: 0 !important; margin: 0;">
+                    <div class="video-overlay" style="color:#e74c3c; font-size: 0.6rem; top: 5px; left: 5px;">• THERMAL
                     </div>
+                    <canvas id="thermal-canvas" width="32" height="24"></canvas>
                 </div>
-                <canvas id="chart-humid"></canvas>
+
+                <!-- Scores Stack (Flex Column to fill height) -->
+                <div style="display: flex; flex-direction: column; gap: 10px; flex: 1;">
+
+                    <!-- AWS Panel -->
+                    <div class="card"
+                        style="flex: 1; border: 1px solid var(--accent-cyan); background: linear-gradient(135deg, rgba(102, 252, 241, 0.15), var(--card-bg)); padding: 5px; justify-content: center;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; padding: 0 10px;">
+                            <div class="card-title" style="font-size: 0.75rem;">AWS SCORE</div>
+                            <div class="card-value-display">
+                                <span id="aws-score" style="color:var(--accent-cyan); font-size: 2rem;">--</span>
+                                <span class="unit" style="font-size: 0.8rem;">/100</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TSS Panel -->
+                    <div class="card"
+                        style="flex: 1; border: 1px solid var(--accent-green); background: linear-gradient(135deg, rgba(46, 204, 113, 0.15), var(--card-bg)); padding: 5px; justify-content: center;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; padding: 0 10px;">
+                            <div class="card-title" style="font-size: 0.75rem;">TSS SCORE</div>
+                            <div class="card-value-display">
+                                <span id="tss-score" style="color:#2ecc71; font-size: 2rem;">--</span>
+                                <span class="unit" style="font-size: 0.8rem;">/100</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
             </div>
 
-            <!-- TSS Panel -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">Terrain Safety</div>
+            <!-- Sensor Data Grid -->
+            <div class="sensor-grid" style="flex: 1; overflow-y: auto;">
+                <!-- Light Sensor -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Light Intensity</div>
+                    </div>
+                    <div class="card-value-display">
+                        <span id="lux-val">--</span> <span class="unit">Lux</span>
+                    </div>
+                    <canvas id="chart-light"></canvas>
                 </div>
-                <div class="card-value-display" style="text-align: center;">
-                    <span id="tss-score" style="color:#2ecc71; font-size: 2rem;">--</span>
-                    <span class="unit">/100</span>
-                </div>
-                <div style="font-size:0.7rem; color:#888; text-align:center;">Safe &gt; 80</div>
-            </div>
 
-            <!-- Air Quality -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">Air Quality</div>
-                    <span id="aq-badge" class="aq-badge aq-good">GOOD</span>
+                <!-- UV Sensor -->
+                <div class="card" id="uv-card">
+                    <div class="card-header">
+                        <div class="card-title">UV Monitor</div>
+                        <span id="uv-status" class="aq-badge aq-good">NORMAL</span>
+                    </div>
+                    <div class="card-value-display" style="text-align: center;">
+                        <span id="uv-val" style="color:#e74c3c; font-size: 2rem;">0</span>
+                        <span class="unit">Index</span>
+                    </div>
+                    <div style="font-size:0.7rem; color:#888; text-align:center;">Safe &lt; 3</div>
                 </div>
-                <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-                    <div class="card-value-display"><span id="co2">--</span> <span class="unit">Ω</span></div>
-                    <div style="font-size:0.8rem; color:#888;">Higher = Cleaner</div>
-                </div>
-                <canvas id="chart-gas"></canvas>
-            </div>
 
-            <!-- Positional -->
-            <div class="card" style="flex-direction:row; justify-content:space-between; align-items:center;">
-                <div>
-                    <div class="card-title">Obstacle Dist</div>
-                    <div class="card-value-display"><span id="moisture">--</span> <span class="unit">cm</span></div>
+                <!-- Metal Detector -->
+                <div class="card" id="mag-card">
+                    <div class="card-header">
+                        <div class="card-title">Metal Detector</div>
+                        <span id="mag-status" class="aq-badge aq-good">CLEAR</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                        <div class="card-value-display"><span id="mag-strength">--</span> <span class="unit">µT</span>
+                        </div>
+                        <div style="font-size:0.8rem; color:#aaa;">ANOMALY: <span id="mag-anomaly"
+                                style="color:#e74c3c">0</span></div>
+                    </div>
+                    <canvas id="chart-mag"></canvas>
                 </div>
-                <div style="text-align:right">
-                    <div class="card-title">Altitude</div>
-                    <div class="card-value-display"><span id="altitude">--</span> <span class="unit">m</span></div>
+
+                <!-- Atmosphere -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Atmosphere</div>
+                        <div class="card-value-display">
+                            <span id="humidity">--</span><span class="unit">%</span> /
+                            <span id="pressure" style="font-size:1rem">--</span><span class="unit">hPa</span>
+                        </div>
+                    </div>
+                    <canvas id="chart-humid"></canvas>
+                </div>
+
+                <!-- Air Quality -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Air Quality</div>
+                        <span id="aq-badge" class="aq-badge aq-good">GOOD</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                        <div class="card-value-display"><span id="co2">--</span> <span class="unit">Ω</span></div>
+                        <div style="font-size:0.8rem; color:#888;">Higher = Cleaner</div>
+                    </div>
+                    <canvas id="chart-gas"></canvas>
+                </div>
+
+                <!-- Positional -->
+                <div class="card" style="flex-direction:row; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div class="card-title">Obstacle Dist</div>
+                        <div class="card-value-display"><span id="moisture">--</span> <span class="unit">cm</span></div>
+                    </div>
+                    <div style="text-align:right">
+                        <div class="card-title">Altitude</div>
+                        <div class="card-value-display"><span id="altitude">--</span> <span class="unit">m</span></div>
+                    </div>
                 </div>
             </div>
         </div>

@@ -1,30 +1,38 @@
-import smbus2
+import board
+import busio
 import time
 
-def scan_i2c(bus_num=1):
-    print(f"Scanning I2C Bus {bus_num}...")
+print("Scanning I2C Bus...")
+
+try:
+    i2c = board.I2C()
+    while not i2c.try_lock():
+        pass
+    
     try:
-        bus = smbus2.SMBus(bus_num)
-    except Exception as e:
-        print(f"Error opening bus {bus_num}: {e}")
-        return
+        devices = i2c.scan()
+        print("Found I2C devices:", [hex(device_address) for device_address in devices])
+        
+        # Identification Hints
+        known = {
+            0x77: "BME688 (Env)",
+            0x76: "BME688 (Env - Alt)",
+            0x33: "MLX90640 (Thermal)",
+            0x53: "LTR390 (UV/Light)",
+            0x30: "MMC5603/MMC5983 (Magentomeer)",
+            0x1E: "HMC5883L (Magnetometer)",
+            0x0C: "MLX90393 (Magnetometer)",
+            0x10: "VEML7700 (Light)"
+        }
+        
+        for addr in devices:
+            if addr in known:
+                print(f"  - {hex(addr)}: Likely {known[addr]}")
+            else:
+                print(f"  - {hex(addr)}: Unknown")
+                
+    finally:
+        i2c.unlock()
 
-    devices = []
-    for address in range(0x03, 0x78):
-        try:
-            bus.write_quick(address)
-            devices.append(hex(address))
-        except OSError:
-            pass
-    
-    if devices:
-        print(f"Found devices at: {', '.join(devices)}")
-        if '0x76' in devices or '0x77' in devices:
-            print("  -> Possible BME680/BME688 detected (0x76 or 0x77)")
-    else:
-        print("No devices found.")
-    
-    bus.close()
-
-if __name__ == "__main__":
-    scan_i2c()
+except Exception as e:
+    print(f"I2C Scan Failed: {e}")

@@ -28,13 +28,13 @@ except ImportError:
     LTR_AVAILABLE = False
     print("Warning: adafruit-circuitpython-ltr390 not installed.")
 
-# Try to import MMC5603
+# Try to import MMC5983MA (Sparkfun)
 try:
-    import adafruit_mmc56x3
+    import qwiic_mmc5983ma
     MAG_AVAILABLE = True
 except ImportError:
     MAG_AVAILABLE = False
-    print("Warning: adafruit-circuitpython-mmc56x3 not installed.")
+    print("Warning: sparkfun-qwiic-mmc5983ma not installed.")
 
 class TerraQuestSensors:
     def __init__(self):
@@ -51,7 +51,7 @@ class TerraQuestSensors:
         self.init_bme688()
         self.init_mlx90640()
         self.init_ltr390()
-        self.init_mmc5603()
+        self.init_magnetometer()
     
     def init_ltr390(self):
         if LTR_AVAILABLE:
@@ -63,15 +63,18 @@ class TerraQuestSensors:
                 print(f"Error initializing LTR390: {e}")
                 self.ltr = None
 
-    def init_mmc5603(self):
+    def init_magnetometer(self):
         if MAG_AVAILABLE:
             try:
-                i2c = board.I2C()
-                self.mag = adafruit_mmc56x3.MMC5603(i2c)
-                # Default initialization is safest
-                print("MMC5603 Magnetometer Initialized.")
+                self.mag = qwiic_mmc5983ma.QwiicMMC5983MA()
+                if self.mag.is_connected():
+                    self.mag.begin()
+                    print("SparkFun MMC5983MA Magnetometer Initialized.")
+                else:
+                    print("MMC5983MA detected but connection failed.")
+                    self.mag = None
             except Exception as e:
-                print(f"Error initializing MMC5603: {e}")
+                print(f"Error initializing MMC5983MA: {e}")
                 self.mag = None
     
     def init_mlx90640(self):
@@ -157,8 +160,14 @@ class TerraQuestSensors:
         """
         if self.mag:
             try:
-                # Get raw magnetic flux (uTesla)
-                x, y, z = self.mag.magnetic
+                # Sparkfun Lib returns (x, y, z) in Gauss
+                x, y, z = self.mag.get_measurement_xyz_gauss()
+                
+                # Convert to uTesla (1 Gauss = 100 uT)
+                x *= 100
+                y *= 100
+                z *= 100
+                
                 # Calculate total strength
                 strength = math.sqrt(x*x + y*y + z*z)
 
