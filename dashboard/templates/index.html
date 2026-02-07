@@ -11,11 +11,12 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
-            --bg-color: #0b0c10;
-            --card-bg: #1f2833;
-            --accent-cyan: #66fcf1;
-            --accent-green: #45a29e;
-            --text-main: #c5c6c7;
+            --bg-color: #f4f6f8;
+            --card-bg: #ffffff;
+            --accent-cyan: #008ba3;
+            /* Darker Cyan for visibility on white */
+            --accent-green: #27ae60;
+            --text-main: #2c3e50;
             --font-mono: 'Courier New', Courier, monospace;
         }
 
@@ -130,7 +131,8 @@
 
         .cam-controls div {
             font-size: 0.8rem;
-            color: var(--accent-cyan);
+            color: #66fcf1;
+            /* Keep bright cyan for dark overlay */
             margin-bottom: 5px;
             font-weight: bold;
         }
@@ -221,13 +223,13 @@
         .card-value-display {
             font-size: 1.2rem;
             font-weight: bold;
-            color: #fff;
+            color: var(--text-main);
             font-family: var(--font-mono);
         }
 
         .unit {
             font-size: 0.7rem;
-            color: #aaa;
+            color: #555;
         }
 
         canvas {
@@ -415,7 +417,7 @@
                             style="display: flex; justify-content: space-between; align-items: center; padding: 0 10px;">
                             <div class="card-title" style="font-size: 0.75rem;">TSS SCORE</div>
                             <div class="card-value-display">
-                                <span id="tss-score" style="color:#2ecc71; font-size: 2rem;">--</span>
+                                <span id="tss-score" style="color:var(--accent-green); font-size: 2rem;">--</span>
                                 <span class="unit" style="font-size: 0.8rem;">/100</span>
                             </div>
                         </div>
@@ -511,8 +513,8 @@
 
     <script>
         // --- Setup Charts ---
-        Chart.defaults.color = '#888';
-        Chart.defaults.borderColor = '#333';
+        Chart.defaults.color = '#333';
+        Chart.defaults.borderColor = '#ddd';
 
         function createChart(ctx, label, color) {
             return new Chart(ctx, {
@@ -534,7 +536,7 @@
                     plugins: { legend: { display: false } },
                     scales: {
                         x: { display: false },
-                        y: { display: true }
+                        y: { display: true, grid: { color: '#eee' } }
                     },
                     animation: { duration: 0 }
                 }
@@ -542,9 +544,9 @@
         }
 
         const chartMag = createChart(document.getElementById('chart-mag'), 'Mag Field', '#e67e22');
-        const chartLight = createChart(document.getElementById('chart-light'), 'Light (Lux)', '#f1c40f');
-        const chartHumid = createChart(document.getElementById('chart-humid'), 'Humidity', '#3498db');
-        const chartGas = createChart(document.getElementById('chart-gas'), 'Gas Res', '#2ecc71');
+        const chartLight = createChart(document.getElementById('chart-light'), 'Light (Lux)', '#f39c12'); // Darker Yellow
+        const chartHumid = createChart(document.getElementById('chart-humid'), 'Humidity', '#2980b9'); // Darker Blue
+        const chartGas = createChart(document.getElementById('chart-gas'), 'Gas Res', '#27ae60'); // Darker Green
 
         function updateChart(chart, val) {
             const data = chart.data.datasets[0].data;
