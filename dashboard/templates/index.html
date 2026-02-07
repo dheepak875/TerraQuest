@@ -411,15 +411,28 @@
                         </div>
                     </div>
 
-                    <!-- TSS Panel -->
-                    <div class="card"
-                        style="flex: 1; border: 1px solid var(--accent-green); background: linear-gradient(135deg, rgba(46, 204, 113, 0.15), var(--card-bg)); padding: 5px; justify-content: center;">
-                        <div
-                            style="display: flex; justify-content: space-between; align-items: center; padding: 0 10px;">
-                            <div class="card-title" style="font-size: 0.75rem;">TSS SCORE</div>
-                            <div class="card-value-display">
-                                <span id="tss-score" style="color:var(--accent-green); font-size: 2rem;">--</span>
-                                <span class="unit" style="font-size: 0.8rem;">/100</span>
+                    <!-- Sub-Scores Row: DPS (Discovery) | TSS (Safety) -->
+                    <div style="display: flex; gap: 5px; flex: 1;">
+
+                        <!-- DPS Panel -->
+                        <div class="card"
+                            style="flex: 1; border: 1px solid #e67e22; background: linear-gradient(135deg, rgba(230, 126, 34, 0.15), var(--card-bg)); padding: 5px; justify-content: center;">
+                            <div style="text-align: center;">
+                                <div class="card-title" style="font-size: 0.6rem; color: #e67e22;">DPS SCORE</div>
+                                <div class="card-value-display">
+                                    <span id="dps-score" style="color:#e67e22; font-size: 1.5rem;">--</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TSS Panel -->
+                        <div class="card"
+                            style="flex: 1; border: 1px solid var(--accent-green); background: linear-gradient(135deg, rgba(46, 204, 113, 0.15), var(--card-bg)); padding: 5px; justify-content: center;">
+                            <div style="text-align: center;">
+                                <div class="card-title" style="font-size: 0.6rem;">TSS SCORE</div>
+                                <div class="card-value-display">
+                                    <span id="tss-score" style="color:var(--accent-green); font-size: 1.5rem;">--</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -611,9 +624,10 @@
                 document.getElementById('lux-val').innerText = lux;
                 document.getElementById('uv-val').innerText = uvIndex;
 
-                // NEW: AWS and TSS
+                // NEW: AWS, TSS, DPS
                 document.getElementById('aws-score').innerText = data.aws;
                 document.getElementById('tss-score').innerText = data.tss;
+                document.getElementById('dps-score').innerText = data.dps;
 
                 // Ping
                 document.getElementById('ping').innerText = Math.floor(Math.random() * 20) + 10;

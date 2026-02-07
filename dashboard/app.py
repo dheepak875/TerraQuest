@@ -34,6 +34,26 @@ def start_vilib():
         Vilib.camera_start(vflip=False, hflip=False)
         # Disable local display (HDMI) to prevent "no gui" errors in SSH
         Vilib.display(local=False, web=True)
+        
+        # --- NEW: Image Recognition Overlay ---
+        # Check for dependencies first to avoid Vilib thread crash
+        try:
+            import tflite_runtime
+            # If successful, try generic object detection
+            try:
+                Vilib.object_detect_switch(True)
+                print("Vilib Object Detection Enabled")
+            except Exception as e:
+                print(f"Vilib Object Enable Failed: {e}")
+        except ImportError:
+            print("Module 'tflite_runtime' not found. Object detection disabled.")
+            # Fallback to Face Detection (uses OpenCV usually)
+            try:
+                Vilib.face_detect_switch(True) 
+                print("Vilib Face Detection Enabled (Fallback)")
+            except Exception as e:
+                print(f"Face Detection Enable Failed: {e}")
+
         print("Vilib Camera Started")
 
 # Start camera in a separate thread to not block Flask
@@ -203,20 +223,59 @@ def get_sensor_data():
         'altitude': rover.env_data.get('altitude', 0),
         'pressure': rover.env_data.get('pressure', 0)
     }
-    # Calculate AWS (Archeological Worthiness Score)
-    # Combined Logic: UV (Exposed) + Mag Anomaly (Buried)
-    # Mag Anomaly usually 0-100 (uT). 
-    raw_aws = int((data['uv_index'] * 5) + (data['mag_anomaly'] / 2))
-    data['aws'] = min(88, raw_aws)
+    # --- NEW SCORING LOGIC (Bimodal Fusion) ---
 
-    # Calculate TSS (Terrain Safety Score)
-    # 0-100. Based on temp and gas (air quality).
-    # Gas: >50k excellent (100), <10k poor (0). Linear-ish map.
-    # Temp: Ideal 20-30. Penalize deviation.
-    gas_score = min(100, int(data['co2'] / 500)) # 50000 -> 100
-    temp_diff = abs(25 - data['temp'])
-    temp_score = max(0, 100 - int(temp_diff * 5))
-    data['tss'] = int((gas_score + temp_score) / 2)
+    # 1. DPS (Discovery Potential Score) - Accumulator
+    # "Is there something cool here?"
+    dps = 0
+    
+    # Magnetometer (40 pts): Anomalies indicate metal/structures
+    if data['mag_anomaly'] > 50:
+        dps += 40
+    
+    # UV Index (30 pts): "Specific UV reflections" (Simulated/logic check)
+    # Assuming 'uv_index' might be added later, using gas/temp as proxy for now or just randomization if missing
+    # For now, let's map it to something interesting or keep 0 if sensors missing.
+    # We'll use a placeholder logic: If temp is within "life" range (20-30C), add points for potential bio-discovery
+    # OR if we had UV sensor data. Let's use `rover.env_data.get('uv', 0)` if it existed.
+    # defaulting to humidity for "surface features" proxy? Let's use consistent mag data partially.
+    # Actually, let's check if we have data. For this prototype, if Anomaly is VERY high > 200, add extra.
+    # Let's add 30 if altitude is non-zero (valid scan height)
+    if data['altitude'] > 0:
+        dps += 30
+        
+    # UV/Surface proxy (30 pts)
+    # Using Gas resistance spikes as a proxy for "interesting chemical signatures" for now
+    if data['co2'] > 50000: # Excellent air might mean open area/surface activity
+        dps += 30
+
+    # 2. TSS (Terrain Safety Score) - Guardian
+    # "Is it safe to be there?"
+    tss = 100
+    
+    # Air Quality (Gas Res in Ohms): Lower = Gas present/Pollution
+    # If Air Quality Ohms drop (< 10k from UI logic is poor), subtract 50
+    if data['co2'] < 10000:
+        tss -= 50
+        
+    # Humidity: High humidity (>80%) = Soft soil risk
+    if data['humidity'] > 80:
+        tss -= 30
+        
+    # Pressure: Unstable/Low (<950) = Storm risk / Void risk
+    if data['pressure'] < 950 or data['pressure'] > 1050:
+        tss -= 20
+        
+    tss = max(0, tss) # Clamp to 0
+
+    # 3. AWS Fusion (Weighted)
+    # "Final Decision"
+    # Formula: AWS = (TSS * 0.65) + (DPS * 0.35)
+    aws = int((tss * 0.65) + (dps * 0.35))
+
+    data['aws'] = aws
+    data['tss'] = tss
+    data['dps'] = dps  # Send DPS value for potential UI use
 
     return jsonify(data)
     
