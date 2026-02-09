@@ -19,10 +19,12 @@ try:
             0x76: "BME688 (Env - Alt)",
             0x33: "MLX90640 (Thermal)",
             0x53: "LTR390 (UV/Light)",
-            0x30: "MMC5603/MMC5983 (Magentomeer)",
+            0x30: "MMC5603/MMC5983 (Magnetometer)",
             0x1E: "HMC5883L (Magnetometer)",
             0x0C: "MLX90393 (Magnetometer)",
-            0x10: "VEML7700 (Light)"
+            0x10: "VEML7700 (Light)",
+            0x29: "VL53L4CD / VL53L0X / VL53L1X (Time of Flight)",
+            0x52: "VL53L0X / VL53L1X (Alternative)"
         }
         
         for addr in devices:

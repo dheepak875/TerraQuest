@@ -211,73 +211,73 @@ def get_sensor_data():
                  rover.check_obstacle()
              except: pass
 
-    data = {
-        'lux': rover.light_data['als'], 
-        'uv_index': rover.light_data['uvs'],
-        'magnetic': rover.mag_data['strength'],
-        'mag_anomaly': rover.mag_data['anomaly'],
-        'moisture': round(rover.distance, 1) if rover.distance else 0,
-        'temp': rover.env_data.get('temp', 0),          
-        'co2':  rover.env_data.get('gas', 0),
-        'humidity': rover.env_data.get('humidity', 0),
-        'altitude': rover.env_data.get('altitude', 0),
-        'pressure': rover.env_data.get('pressure', 0)
-    }
-    # --- NEW SCORING LOGIC (Bimodal Fusion) ---
+        data = {
+            'lux': rover.light_data['als'], 
+            'uv_index': rover.light_data['uvs'],
+            'magnetic': rover.mag_data['strength'],
+            'mag_anomaly': rover.mag_data['anomaly'],
+            'moisture': round(rover.distance, 1) if rover.distance else 0,
+            'temp': rover.env_data.get('temp', 0),          
+            'co2':  rover.env_data.get('gas', 0),
+            'humidity': rover.env_data.get('humidity', 0),
+            'altitude': rover.env_data.get('altitude', 0),
+            'pressure': rover.env_data.get('pressure', 0)
+        }
+        # --- NEW SCORING LOGIC (Bimodal Fusion) ---
 
-    # 1. DPS (Discovery Potential Score) - Accumulator
-    # "Is there something cool here?"
-    dps = 0
-    
-    # Magnetometer (40 pts): Anomalies indicate metal/structures
-    if data['mag_anomaly'] > 50:
-        dps += 40
-    
-    # UV Index (30 pts): "Specific UV reflections" (Simulated/logic check)
-    # Assuming 'uv_index' might be added later, using gas/temp as proxy for now or just randomization if missing
-    # For now, let's map it to something interesting or keep 0 if sensors missing.
-    # We'll use a placeholder logic: If temp is within "life" range (20-30C), add points for potential bio-discovery
-    # OR if we had UV sensor data. Let's use `rover.env_data.get('uv', 0)` if it existed.
-    # defaulting to humidity for "surface features" proxy? Let's use consistent mag data partially.
-    # Actually, let's check if we have data. For this prototype, if Anomaly is VERY high > 200, add extra.
-    # Let's add 30 if altitude is non-zero (valid scan height)
-    if data['altitude'] > 0:
-        dps += 30
+        # 1. DPS (Discovery Potential Score) - Accumulator
+        # "Is there something cool here?"
+        dps = 0
         
-    # UV/Surface proxy (30 pts)
-    # Using Gas resistance spikes as a proxy for "interesting chemical signatures" for now
-    if data['co2'] > 50000: # Excellent air might mean open area/surface activity
-        dps += 30
-
-    # 2. TSS (Terrain Safety Score) - Guardian
-    # "Is it safe to be there?"
-    tss = 100
-    
-    # Air Quality (Gas Res in Ohms): Lower = Gas present/Pollution
-    # If Air Quality Ohms drop (< 10k from UI logic is poor), subtract 50
-    if data['co2'] < 10000:
-        tss -= 50
+        # Magnetometer (40 pts): Anomalies indicate metal/structures
+        if data['mag_anomaly'] > 50:
+            dps += 40
         
-    # Humidity: High humidity (>80%) = Soft soil risk
-    if data['humidity'] > 80:
-        tss -= 30
+        # UV Index (30 pts): "Specific UV reflections" (Simulated/logic check)
+        # Assuming 'uv_index' might be added later, using gas/temp as proxy for now or just randomization if missing
+        # For now, let's map it to something interesting or keep 0 if sensors missing.
+        # We'll use a placeholder logic: If temp is within "life" range (20-30C), add points for potential bio-discovery
+        # OR if we had UV sensor data. Let's use `rover.env_data.get('uv', 0)` if it existed.
+        # defaulting to humidity for "surface features" proxy? Let's use consistent mag data partially.
+        # Actually, let's check if we have data. For this prototype, if Anomaly is VERY high > 200, add extra.
+        # Let's add 30 if altitude is non-zero (valid scan height)
+        if data['altitude'] > 0:
+            dps += 30
+            
+        # UV/Surface proxy (30 pts)
+        # Using Gas resistance spikes as a proxy for "interesting chemical signatures" for now
+        if data['co2'] > 50000: # Excellent air might mean open area/surface activity
+            dps += 30
+
+        # 2. TSS (Terrain Safety Score) - Guardian
+        # "Is it safe to be there?"
+        tss = 100
         
-    # Pressure: Unstable/Low (<950) = Storm risk / Void risk
-    if data['pressure'] < 950 or data['pressure'] > 1050:
-        tss -= 20
-        
-    tss = max(0, tss) # Clamp to 0
+        # Air Quality (Gas Res in Ohms): Lower = Gas present/Pollution
+        # If Air Quality Ohms drop (< 10k from UI logic is poor), subtract 50
+        if data['co2'] < 10000:
+            tss -= 50
+            
+        # Humidity: High humidity (>80%) = Soft soil risk
+        if data['humidity'] > 80:
+            tss -= 30
+            
+        # Pressure: Unstable/Low (<950) = Storm risk / Void risk
+        if data['pressure'] < 950 or data['pressure'] > 1050:
+            tss -= 20
+            
+        tss = max(0, tss) # Clamp to 0
 
-    # 3. AWS Fusion (Weighted)
-    # "Final Decision"
-    # Formula: AWS = (TSS * 0.65) + (DPS * 0.35)
-    aws = int((tss * 0.65) + (dps * 0.35))
+        # 3. AWS Fusion (Weighted)
+        # "Final Decision"
+        # Formula: AWS = (TSS * 0.65) + (DPS * 0.35)
+        aws = int((tss * 0.65) + (dps * 0.35))
 
-    data['aws'] = aws
-    data['tss'] = tss
-    data['dps'] = dps  # Send DPS value for potential UI use
+        data['aws'] = aws
+        data['tss'] = tss
+        data['dps'] = dps  # Send DPS value for potential UI use
 
-    return jsonify(data)
+        return jsonify(data)
     
     # Fallback if rover not ready
     data = {
@@ -286,6 +286,7 @@ def get_sensor_data():
         'aws': 0, 'tss': 0
     }
     return jsonify(data)
+
 
 @app.route('/api/thermal')
 def get_thermal_data():
