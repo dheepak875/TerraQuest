@@ -356,9 +356,10 @@
         <div style="font-family: var(--font-mono); font-size: 0.9rem; margin-top: 5px;">STATUS: <span
                 id="mission-status">IDLE</span> // CONNECTION: SECURE</div>
         <div style="margin-top: 15px;">
-            <button id="btn-start" class="btn btn-start" onclick="toggleMission(true)" disabled>AUTONOMOUS SCOUTING
-                (DISABLED)</button>
-            <button id="btn-stop" class="btn btn-stop" onclick="toggleMission(false)" disabled>STOP MISSION</button>
+            <button id="btn-start" class="btn btn-start" onclick="toggleMission(true)">AUTONOMOUS SCOUTING</button>
+            <button id="btn-stop" class="btn btn-stop" onclick="toggleMission(false)" disabled
+                style="opacity: 0.5; cursor: not-allowed;">STOP MISSION</button>
+            <button id="btn-demo" class="btn btn-start" onclick="runDemo()" style="margin-left: 20px;">DEMO</button>
         </div>
     </header>
 
@@ -399,11 +400,12 @@
                 <div style="display: flex; flex-direction: column; gap: 10px; flex: 1;">
 
                     <!-- AWS Panel -->
-                    <div class="card"
-                        style="flex: 1; border: 1px solid var(--accent-cyan); background: linear-gradient(135deg, rgba(102, 252, 241, 0.15), var(--card-bg)); padding: 5px; justify-content: center;">
+                    <div id="aws-panel" class="card"
+                        style="flex: 1; border: 2px solid var(--accent-cyan); background: linear-gradient(135deg, rgba(102, 252, 241, 0.15), var(--card-bg)); padding: 10px; justify-content: center; transition: all 0.3s ease;">
                         <div
                             style="display: flex; justify-content: space-between; align-items: center; padding: 0 10px;">
-                            <div class="card-title" style="font-size: 0.75rem;">AWS SCORE</div>
+                            <div class="card-title" style="font-size: 2.25rem; font-weight: 900; letter-spacing: 2px;">
+                                AWS SCORE</div>
                             <div class="card-value-display">
                                 <span id="aws-score" style="color:var(--accent-cyan); font-size: 2rem;">--</span>
                                 <span class="unit" style="font-size: 0.8rem;">/100</span>
@@ -415,10 +417,12 @@
                     <div style="display: flex; gap: 5px; flex: 1;">
 
                         <!-- DPS Panel -->
-                        <div class="card"
-                            style="flex: 1; border: 1px solid #e67e22; background: linear-gradient(135deg, rgba(230, 126, 34, 0.15), var(--card-bg)); padding: 5px; justify-content: center;">
+                        <div id="dps-panel" class="card"
+                            style="flex: 1; border: 2px solid #e67e22; background: linear-gradient(135deg, rgba(230, 126, 34, 0.15), var(--card-bg)); padding: 5px; justify-content: center; transition: all 0.3s ease;">
                             <div style="text-align: center;">
-                                <div class="card-title" style="font-size: 0.6rem; color: #e67e22;">DPS SCORE</div>
+                                <div class="card-title"
+                                    style="font-size: 1.5rem; font-weight: 900; color: #e67e22; letter-spacing: 1px;">
+                                    DPS</div>
                                 <div class="card-value-display">
                                     <span id="dps-score" style="color:#e67e22; font-size: 1.5rem;">--</span>
                                 </div>
@@ -426,10 +430,11 @@
                         </div>
 
                         <!-- TSS Panel -->
-                        <div class="card"
-                            style="flex: 1; border: 1px solid var(--accent-green); background: linear-gradient(135deg, rgba(46, 204, 113, 0.15), var(--card-bg)); padding: 5px; justify-content: center;">
+                        <div id="tss-panel" class="card"
+                            style="flex: 1; border: 2px solid var(--accent-green); background: linear-gradient(135deg, rgba(46, 204, 113, 0.15), var(--card-bg)); padding: 5px; justify-content: center; transition: all 0.3s ease;">
                             <div style="text-align: center;">
-                                <div class="card-title" style="font-size: 0.6rem;">TSS SCORE</div>
+                                <div class="card-title"
+                                    style="font-size: 1.5rem; font-weight: 900; letter-spacing: 1px;">TSS</div>
                                 <div class="card-value-display">
                                     <span id="tss-score" style="color:var(--accent-green); font-size: 1.5rem;">--</span>
                                 </div>
@@ -624,10 +629,53 @@
                 document.getElementById('lux-val').innerText = lux;
                 document.getElementById('uv-val').innerText = uvIndex;
 
-                // NEW: AWS, TSS, DPS
-                document.getElementById('aws-score').innerText = data.aws;
-                document.getElementById('tss-score').innerText = data.tss;
-                document.getElementById('dps-score').innerText = data.dps;
+                // NEW: AWS, TSS, DPS with Dynamic Color Coding
+                const awsScore = data.aws;
+                const tssScore = data.tss;
+                const dpsScore = data.dps;
+
+                document.getElementById('aws-score').innerText = awsScore;
+                document.getElementById('tss-score').innerText = tssScore;
+                document.getElementById('dps-score').innerText = dpsScore;
+
+                // AWS Panel Color (70+ = Green, 40-69 = Yellow, <40 = Red)
+                const awsPanel = document.getElementById('aws-panel');
+                if (awsScore >= 70) {
+                    awsPanel.style.background = 'linear-gradient(135deg, #27ae60, #2ecc71)';
+                    awsPanel.style.borderColor = '#27ae60';
+                } else if (awsScore >= 40) {
+                    awsPanel.style.background = 'linear-gradient(135deg, #f39c12, #f1c40f)';
+                    awsPanel.style.borderColor = '#f39c12';
+                } else {
+                    awsPanel.style.background = 'linear-gradient(135deg, #c0392b, #e74c3c)';
+                    awsPanel.style.borderColor = '#c0392b';
+                }
+
+                // DPS Panel Color (60+ = Green, 30-59 = Yellow, <30 = Red)
+                const dpsPanel = document.getElementById('dps-panel');
+                if (dpsScore >= 60) {
+                    dpsPanel.style.background = 'linear-gradient(135deg, #27ae60, #2ecc71)';
+                    dpsPanel.style.borderColor = '#27ae60';
+                } else if (dpsScore >= 30) {
+                    dpsPanel.style.background = 'linear-gradient(135deg, #f39c12, #f1c40f)';
+                    dpsPanel.style.borderColor = '#f39c12';
+                } else {
+                    dpsPanel.style.background = 'linear-gradient(135deg, #c0392b, #e74c3c)';
+                    dpsPanel.style.borderColor = '#c0392b';
+                }
+
+                // TSS Panel Color (70+ = Green, 40-69 = Yellow, <40 = Red)
+                const tssPanel = document.getElementById('tss-panel');
+                if (tssScore >= 70) {
+                    tssPanel.style.background = 'linear-gradient(135deg, #27ae60, #2ecc71)';
+                    tssPanel.style.borderColor = '#27ae60';
+                } else if (tssScore >= 40) {
+                    tssPanel.style.background = 'linear-gradient(135deg, #f39c12, #f1c40f)';
+                    tssPanel.style.borderColor = '#f39c12';
+                } else {
+                    tssPanel.style.background = 'linear-gradient(135deg, #c0392b, #e74c3c)';
+                    tssPanel.style.borderColor = '#c0392b';
+                }
 
                 // Ping
                 document.getElementById('ping').innerText = Math.floor(Math.random() * 20) + 10;
@@ -704,19 +752,67 @@
         }
 
         async function toggleMission(start) {
+            const startBtn = document.getElementById('btn-start');
+            const stopBtn = document.getElementById('btn-stop');
             const endpoint = start ? '/api/scout/start' : '/api/scout/stop';
+
             try {
                 const res = await fetch(endpoint, { method: 'POST' });
                 const data = await res.json();
                 console.log(data);
-                // Update UI based on scout status not manual mission
-                if (data.status === 'Scout Started') {
+
+                if (start) {
+                    // Disable start button after pressing
+                    startBtn.disabled = true;
+                    startBtn.style.opacity = '0.5';
+                    startBtn.style.cursor = 'not-allowed';
+
+                    // Enable stop button
+                    stopBtn.disabled = false;
+                    stopBtn.style.opacity = '1';
+                    stopBtn.style.cursor = 'pointer';
+
                     updateMissionUI(true);
-                } else if (data.status === 'Scout Stopped') {
+                } else {
+                    // Re-enable start button when stopped
+                    startBtn.disabled = false;
+                    startBtn.style.opacity = '1';
+                    startBtn.style.cursor = 'pointer';
+
+                    // Disable stop button
+                    stopBtn.disabled = true;
+                    stopBtn.style.opacity = '0.5';
+                    stopBtn.style.cursor = 'not-allowed';
+
                     updateMissionUI(false);
                 }
             } catch (e) {
                 console.error("Scout toggle failed", e);
+            }
+        }
+
+        async function runDemo() {
+            const demoBtn = document.getElementById('btn-demo');
+            try {
+                demoBtn.disabled = true;
+                demoBtn.style.opacity = '0.5';
+                demoBtn.innerText = 'RUNNING...';
+
+                const res = await fetch('/api/demo', { method: 'POST' });
+                const data = await res.json();
+                console.log(data);
+
+                // Re-enable after demo completes (backend will auto-stop)
+                setTimeout(() => {
+                    demoBtn.disabled = false;
+                    demoBtn.style.opacity = '1';
+                    demoBtn.innerText = 'DEMO';
+                }, 15000); // 15 seconds for longer demo
+            } catch (e) {
+                console.error("Demo failed", e);
+                demoBtn.disabled = false;
+                demoBtn.style.opacity = '1';
+                demoBtn.innerText = 'DEMO';
             }
         }
 

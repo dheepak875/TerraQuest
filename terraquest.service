@@ -1,0 +1,22 @@
+[Unit]
+Description=TerraQuest Dashboard Service
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+User=terraq
+WorkingDirectory=/home/terraq/TerraQuest/dashboard
+# Wait for I2C bus to be fully ready
+ExecStartPre=/bin/sleep 5
+ExecStart=/usr/bin/python3 /home/terraq/TerraQuest/dashboard/app.py
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+# Ensure access to I2C and GPIO
+SupplementaryGroups=i2c gpio
+# Log output for debugging
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

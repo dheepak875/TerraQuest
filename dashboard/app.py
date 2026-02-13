@@ -88,11 +88,27 @@ def start_rover_thread():
         rover_thread.start()
         print("Rover Thread Started (Idle)")
 
-# Initialize rover logic on app start
-try:
-    start_rover_thread()
-except Exception as e:
-    print(f"Failed to start rover thread: {e}")
+# Initialize rover logic on app start with retry logic
+max_retries = 3
+retry_delay = 2  # seconds
+
+for attempt in range(max_retries):
+    try:
+        print(f"Attempting to initialize rover (attempt {attempt + 1}/{max_retries})...")
+        start_rover_thread()
+        print("✓ Rover initialized successfully!")
+        break
+    except Exception as e:
+        print(f"✗ Failed to start rover thread (attempt {attempt + 1}/{max_retries}): {e}")
+        if attempt < max_retries - 1:
+            print(f"Retrying in {retry_delay} seconds...")
+            time.sleep(retry_delay)
+        else:
+            print("⚠ WARNING: Rover initialization failed after all retries. Sensor data will not be available.")
+            print(f"Error details: {e}")
+            import traceback
+            traceback.print_exc()
+
 
 @app.route('/')
 def index():
@@ -106,19 +122,25 @@ def start_scout():
     if rover is None:
         return jsonify({'error': 'Rover hardware not initialized'}), 500
 
+    # Only initialize scout once
     if scout is None:
         try:
             print("INITIALIZING SCOUT ENGINE...")
+            print("Creating TerraQuestScout with shared hardware...")
             # Share both hardware (px) and sensors to avoid I2C/Port conflicts
             scout = TerraQuestScout(
                 px_instance=rover.px, 
                 sensors_instance=rover.sensors, 
                 sio_client=socketio
             )
+            print("Scout instance created successfully")
         except Exception as e:
             print(f"SCOUT INIT FAILED: {e}")
+            import traceback
+            traceback.print_exc()
             return jsonify({'error': f'Init failed: {e}'}), 500
     
+    # Start the scout movement
     if not scout.running:
         try:
             # Ensure base rover isn't doing anything
@@ -127,12 +149,26 @@ def start_scout():
             
             print("LAUNCHING SCOUT THREADS...")
             scout.start()
-            return jsonify({'status': 'Scout Started'})
+            
+            # Auto-stop after 5 seconds
+            def auto_stop():
+                time.sleep(5)
+                if scout and scout.running:
+                    print("AUTO-STOPPING SCOUT AFTER 5 SECONDS")
+                    scout.stop()
+            
+            auto_stop_thread = threading.Thread(target=auto_stop)
+            auto_stop_thread.daemon = True
+            auto_stop_thread.start()
+            
+            return jsonify({'status': 'Scout Started (5s auto-stop)'})
         except Exception as e:
             print(f"SCOUT START FAILED: {e}")
+            import traceback
+            traceback.print_exc()
             return jsonify({'error': f'Start failed: {e}'}), 500
-            
-    return jsonify({'status': 'Scout Already Running'})
+    else:
+        return jsonify({'status': 'Scout Already Running'})
 
 @app.route('/api/scout/stop', methods=['POST'])
 def stop_scout():
@@ -140,6 +176,93 @@ def stop_scout():
         scout.stop()
         return jsonify({'status': 'Scout Stopped'})
     return jsonify({'error': 'Scout not running'})
+
+@app.route('/api/demo', methods=['POST'])
+def run_demo():
+    """Simple choreographed demo movement"""
+    global rover
+    
+    if rover is None:
+        return jsonify({'error': 'Rover not initialized'}), 500
+    
+    def demo_sequence():
+        try:
+            px = rover.px
+            print("DEMO: Starting choreographed sequence...")
+            
+            # 1. Move forward for 1 second (50% reduced)
+            print("DEMO: Moving forward...")
+            px.set_dir_servo_angle(0)
+            px.forward(30)
+            time.sleep(1)  # Reduced from 2 to 1 second
+            px.stop()
+            time.sleep(0.5)
+            
+            # 2. Pan camera left and right
+            print("DEMO: Panning camera...")
+            px.set_cam_pan_angle(-30)  # Pan left
+            time.sleep(0.5)
+            px.set_cam_pan_angle(30)   # Pan right
+            time.sleep(0.5)
+            px.set_cam_pan_angle(0)    # Center
+            time.sleep(0.5)
+            
+            # 3. Turn left
+            print("DEMO: Turning left...")
+            px.set_dir_servo_angle(-40)
+            px.forward(30)
+            time.sleep(0.8)
+            px.stop()
+            px.set_dir_servo_angle(0)
+            time.sleep(0.5)
+            
+            # 4. Move forward again after turn
+            print("DEMO: Moving forward after turn...")
+            px.set_dir_servo_angle(0)
+            px.forward(30)
+            time.sleep(0.75)  # Reduced from 1.5 to 0.75 seconds (50%)
+            px.stop()
+            time.sleep(0.5)
+            
+            # 5. Pan camera again
+            print("DEMO: Panning camera again...")
+            px.set_cam_pan_angle(-30)  # Pan left
+            time.sleep(0.5)
+            px.set_cam_pan_angle(30)   # Pan right
+            time.sleep(0.5)
+            px.set_cam_pan_angle(0)    # Center
+            time.sleep(0.5)
+            
+            # 6. Tilt down and slowly pan left/right once
+            print("DEMO: Tilting down and panning...")
+            px.set_cam_tilt_angle(-15)  # Tilt DOWN less (was -30, hitting ground)
+            time.sleep(0.5)
+            
+            # Very slow pan left and right - once
+            px.set_cam_pan_angle(-30)  # Pan left
+            time.sleep(2.0)  # Very slow (was 1.2)
+            px.set_cam_pan_angle(30)   # Pan right
+            time.sleep(2.0)  # Very slow (was 1.2)
+            
+            # End in left position
+            px.set_cam_pan_angle(-30)  # Pan left
+            time.sleep(0.5)
+            
+            # Final stop
+            px.stop()
+            print("DEMO: Sequence complete!")
+            
+        except Exception as e:
+            print(f"DEMO ERROR: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    # Run demo in background thread
+    demo_thread = threading.Thread(target=demo_sequence)
+    demo_thread.daemon = True
+    demo_thread.start()
+    
+    return jsonify({'status': 'Demo started'})
 
 @app.route('/api/mission/start', methods=['POST'])
 def start_mission():

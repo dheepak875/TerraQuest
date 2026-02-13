@@ -36,12 +36,21 @@ except ImportError:
     MAG_AVAILABLE = False
     print("Warning: sparkfun-qwiic-mmc5983ma not installed.")
 
+# Try to import VL53L4CD ToF Sensor
+try:
+    from adafruit_vl53l4cd import VL53L4CD
+    TOF_AVAILABLE = True
+except ImportError:
+    TOF_AVAILABLE = False
+    print("Warning: adafruit-circuitpython-vl53l4cd not installed.")
+
 class TerraQuestSensors:
     def __init__(self):
         self.bme = None
         self.mlx = None
         self.ltr = None
         self.mag = None
+        self.tof = None
         self.thermal_frame = [0] * 768
 
         # Mag Baseline
@@ -52,6 +61,7 @@ class TerraQuestSensors:
         self.init_mlx90640()
         self.init_ltr390()
         self.init_magnetometer()
+        self.init_tof_sensor()
     
     def init_ltr390(self):
         if LTR_AVAILABLE:
@@ -76,6 +86,19 @@ class TerraQuestSensors:
             except Exception as e:
                 print(f"Error initializing MMC5983MA: {e}")
                 self.mag = None
+
+    def init_tof_sensor(self):
+        if TOF_AVAILABLE:
+            try:
+                i2c = board.I2C()
+                self.tof = VL53L4CD(i2c)
+                self.tof.inter_measurement = 0
+                self.tof.timing_budget = 200
+                self.tof.start_ranging()
+                print("VL53L4CD Time-of-Flight Sensor Initialized.")
+            except Exception as e:
+                print(f"Error initializing ToF Sensor: {e}")
+                self.tof = None
     
     def init_mlx90640(self):
         if MLX_AVAILABLE:
@@ -186,10 +209,25 @@ class TerraQuestSensors:
                 pass
         return 0, 0
 
+    def get_distance(self):
+        """
+        Returns distance in cm (or -1 if error/not ready)
+        """
+        if self.tof:
+            try:
+                if self.tof.data_ready:
+                    dist = self.tof.distance
+                    self.tof.clear_interrupt()
+                    return dist
+            except Exception:
+                pass
+        return -1
+
 # Test execution
 if __name__ == "__main__":
     sensors = TerraQuestSensors()
     while True:
         env = sensors.read_environment()
-        print(f"Env Data: {env}")
-        time.sleep(1)
+        dist = sensors.get_distance()
+        print(f"Env: {env} | Dist: {dist} cm")
+        time.sleep(0.5)
