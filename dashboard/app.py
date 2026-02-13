@@ -4,6 +4,7 @@ from flask_socketio import SocketIO, emit
 import random
 import time
 import threading
+from robot_hat import Servo
 
 # Try importing vilib, if not available (e.g. on dev machine), mock it or skip
 try:
@@ -177,6 +178,34 @@ def stop_scout():
         return jsonify({'status': 'Scout Stopped'})
     return jsonify({'error': 'Scout not running'})
 
+def read_tof_distance(tof_sensor):
+    """
+    Read distance from ToF sensor with error handling
+    Returns distance in cm, or -1 if error/timeout
+    """
+    try:
+        if tof_sensor is None:
+            return -1
+            
+        # Wait for data to be ready (with timeout)
+        timeout = time.time() + 1.0  # 1 second timeout
+        while not tof_sensor.data_ready:
+            if time.time() > timeout:
+                return -1
+            time.sleep(0.01)
+        
+        # Get distance
+        dist = tof_sensor.distance
+        
+        # Clear interrupt for next reading
+        tof_sensor.clear_interrupt()
+        
+        return dist if dist > 0 else -1
+    
+    except Exception as e:
+        return -1
+
+
 @app.route('/api/demo', methods=['POST'])
 def run_demo():
     """Simple choreographed demo movement"""
@@ -186,6 +215,49 @@ def run_demo():
         return jsonify({'error': 'Rover not initialized'}), 500
     
     def demo_sequence():
+        radar_running = {'active': True}  # Flag to control radar thread
+        
+        def radar_sweep_continuous():
+            """Continuously sweep radar servo back and forth during demo"""
+            try:
+                servo_radar = Servo("P3")
+                socketio.emit('radar_status', {'status': 'scanning'})
+                print("DEMO: Radar servo started (continuous sweep)")
+                
+                while radar_running['active']:
+                    # Sweep forward: -90° to +90°
+                    for angle in range(-90, 91, 10):
+                        if not radar_running['active']:
+                            break
+                        servo_radar.angle(angle)
+                        time.sleep(0.15)
+                        socketio.emit('radar_update', {'angle': angle, 'distance': 100})
+                        print(f"RADAR: {angle}°")
+                    
+                    # Sweep backward: +90° to -90°
+                    for angle in range(90, -91, -10):
+                        if not radar_running['active']:
+                            break
+                        servo_radar.angle(angle)
+                        time.sleep(0.15)
+                        socketio.emit('radar_update', {'angle': angle, 'distance': 100})
+                        print(f"RADAR: {angle}°")
+                
+                # Return to center when done
+                servo_radar.angle(0)
+                socketio.emit('radar_status', {'status': 'complete'})
+                print("DEMO: Radar servo stopped")
+                
+            except Exception as e:
+                print(f"RADAR ERROR: {e}")
+                import traceback
+                traceback.print_exc()
+                socketio.emit('radar_status', {'status': 'error', 'message': str(e)})
+        
+        # Start radar sweep in background thread
+        radar_thread = threading.Thread(target=radar_sweep_continuous, daemon=True)
+        radar_thread.start()
+        
         try:
             px = rover.px
             print("DEMO: Starting choreographed sequence...")
@@ -226,27 +298,38 @@ def run_demo():
             
             # 5. Pan camera again
             print("DEMO: Panning camera again...")
-            px.set_cam_pan_angle(-30)  # Pan left
-            time.sleep(0.5)
-            px.set_cam_pan_angle(30)   # Pan right
-            time.sleep(0.5)
-            px.set_cam_pan_angle(0)    # Center
-            time.sleep(0.5)
+            try:
+                px.set_cam_pan_angle(-30)  # Pan left
+                time.sleep(0.5)
+                px.set_cam_pan_angle(30)   # Pan right
+                time.sleep(0.5)
+                px.set_cam_pan_angle(0)    # Center
+                time.sleep(0.5)
+                print("DEMO: Step 5 complete")
+            except Exception as e:
+                print(f"DEMO: Error in step 5 (pan camera): {e}")
             
             # 6. Tilt down and slowly pan left/right once
             print("DEMO: Tilting down and panning...")
-            px.set_cam_tilt_angle(-15)  # Tilt DOWN less (was -30, hitting ground)
-            time.sleep(0.5)
+            try:
+                px.set_cam_tilt_angle(-15)  # Tilt DOWN less (was -30, hitting ground)
+                time.sleep(0.5)
+                
+                # Very slow pan left and right - once
+                px.set_cam_pan_angle(-30)  # Pan left
+                time.sleep(2.0)  # Very slow (was 1.2)
+                px.set_cam_pan_angle(30)   # Pan right
+                time.sleep(2.0)  # Very slow (was 1.2)
+                
+                # End in left position
+                px.set_cam_pan_angle(-30)  # Pan left
+                time.sleep(0.5)
+                print("DEMO: Step 6 complete")
+            except Exception as e:
+                print(f"DEMO: Error in step 6 (tilt/pan): {e}")
             
-            # Very slow pan left and right - once
-            px.set_cam_pan_angle(-30)  # Pan left
-            time.sleep(2.0)  # Very slow (was 1.2)
-            px.set_cam_pan_angle(30)   # Pan right
-            time.sleep(2.0)  # Very slow (was 1.2)
-            
-            # End in left position
-            px.set_cam_pan_angle(-30)  # Pan left
-            time.sleep(0.5)
+            # Stop radar sweep
+            radar_running['active'] = False
             
             # Final stop
             px.stop()

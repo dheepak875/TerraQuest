@@ -523,6 +523,16 @@
                     </div>
                 </div>
             </div>
+
+            <!-- ToF Radar Panel -->
+            <div class="card" style="margin-top: 10px; padding: 15px; max-width: 430px;">
+                <h3 style="margin: 0 0 10px 0; color: #00ff00; font-size: 1.2rem; text-align: center;">ToF Radar</h3>
+                <canvas id="radarCanvas" width="400" height="400"
+                    style="display: block; margin: 0 auto; background: #000000; border: 2px solid #00ff00; border-radius: 4px;"></canvas>
+                <div id="radarStatus" style="text-align: center; margin-top: 10px; color: #00ff00; font-size: 14px;">
+                    Inactive - Click DEMO to activate
+                </div>
+            </div>
         </div>
     </div>
 
@@ -931,6 +941,144 @@
                 body: JSON.stringify({ speed: speed, angle: angle })
             });
         }
+
+        // --- ToF Radar Visualization ---
+        const radarCanvas = document.getElementById('radarCanvas');
+        const radarCtx = radarCanvas.getContext('2d');
+        const radarStatus = document.getElementById('radarStatus');
+
+        let radarData = [];  // Store radar points: [{angle, distance}, ...]
+        let currentSweepAngle = -90;  // Current sweep line angle
+
+        const RADAR_CENTER_X = 200;
+        const RADAR_CENTER_Y = 200;
+        const RADAR_MAX_RADIUS = 180;
+        const RADAR_MAX_DISTANCE = 400;  // cm
+
+        function drawRadar() {
+            // Clear canvas
+            radarCtx.clearRect(0, 0, radarCanvas.width, radarCanvas.height);
+
+            // Draw concentric circles (range rings) - GREEN
+            radarCtx.strokeStyle = '#00ff00';
+            radarCtx.lineWidth = 1.5;
+            for (let i = 1; i <= 4; i++) {
+                const radius = (RADAR_MAX_RADIUS / 4) * i;
+                radarCtx.beginPath();
+                radarCtx.arc(RADAR_CENTER_X, RADAR_CENTER_Y, radius, 0, 2 * Math.PI);
+                radarCtx.stroke();
+            }
+
+            // Draw angle lines (every 10 degrees for denser grid) - GREEN
+            radarCtx.strokeStyle = '#00ff00';
+            radarCtx.lineWidth = 0.5;
+            for (let angle = 0; angle < 360; angle += 10) {
+                const rad = (angle - 90) * Math.PI / 180;
+                radarCtx.beginPath();
+                radarCtx.moveTo(RADAR_CENTER_X, RADAR_CENTER_Y);
+                radarCtx.lineTo(
+                    RADAR_CENTER_X + RADAR_MAX_RADIUS * Math.cos(rad),
+                    RADAR_CENTER_Y + RADAR_MAX_RADIUS * Math.sin(rad)
+                );
+                radarCtx.stroke();
+            }
+
+            // Draw center point - BRIGHT GREEN
+            radarCtx.fillStyle = '#00ff00';
+            radarCtx.beginPath();
+            radarCtx.arc(RADAR_CENTER_X, RADAR_CENTER_Y, 4, 0, 2 * Math.PI);
+            radarCtx.fill();
+
+            // Draw sweep fade effect (like the reference image)
+            const sweepRad = (currentSweepAngle - 90) * Math.PI / 180;
+            const gradient = radarCtx.createRadialGradient(RADAR_CENTER_X, RADAR_CENTER_Y, 0, RADAR_CENTER_X, RADAR_CENTER_Y, RADAR_MAX_RADIUS);
+            gradient.addColorStop(0, 'rgba(0, 255, 0, 0.3)');
+            gradient.addColorStop(1, 'rgba(0, 255, 0, 0)');
+
+            radarCtx.fillStyle = gradient;
+            radarCtx.beginPath();
+            radarCtx.moveTo(RADAR_CENTER_X, RADAR_CENTER_Y);
+            radarCtx.arc(RADAR_CENTER_X, RADAR_CENTER_Y, RADAR_MAX_RADIUS, sweepRad - Math.PI / 6, sweepRad);
+            radarCtx.lineTo(RADAR_CENTER_X, RADAR_CENTER_Y);
+            radarCtx.fill();
+
+            // Draw radar data points - BRIGHT GREEN with glow
+            radarData.forEach(point => {
+                if (point.distance > 0 && point.distance <= RADAR_MAX_DISTANCE) {
+                    const rad = (point.angle - 90) * Math.PI / 180;
+                    const radius = (point.distance / RADAR_MAX_DISTANCE) * RADAR_MAX_RADIUS;
+                    const x = RADAR_CENTER_X + radius * Math.cos(rad);
+                    const y = RADAR_CENTER_Y + radius * Math.sin(rad);
+
+                    // Bright green with glow effect
+                    radarCtx.shadowBlur = 10;
+                    radarCtx.shadowColor = '#00ff00';
+                    radarCtx.fillStyle = '#00ff00';
+                    radarCtx.beginPath();
+                    radarCtx.arc(x, y, 3, 0, 2 * Math.PI);
+                    radarCtx.fill();
+                    radarCtx.shadowBlur = 0;
+                }
+            });
+
+            // Draw sweep line - BRIGHT GREEN
+            radarCtx.strokeStyle = '#00ff00';
+            radarCtx.lineWidth = 2;
+            radarCtx.shadowBlur = 15;
+            radarCtx.shadowColor = '#00ff00';
+            radarCtx.beginPath();
+            radarCtx.moveTo(RADAR_CENTER_X, RADAR_CENTER_Y);
+            radarCtx.lineTo(
+                RADAR_CENTER_X + RADAR_MAX_RADIUS * Math.cos(sweepRad),
+                RADAR_CENTER_Y + RADAR_MAX_RADIUS * Math.sin(sweepRad)
+            );
+            radarCtx.stroke();
+            radarCtx.shadowBlur = 0;
+
+            // Draw range labels - GREEN
+            radarCtx.fillStyle = '#00ff00';
+            radarCtx.font = '11px monospace';
+            radarCtx.fillText('10 cm', RADAR_CENTER_X + 5, RADAR_CENTER_Y - (RADAR_MAX_RADIUS / 4) + 5);
+            radarCtx.fillText('20 cm', RADAR_CENTER_X + 5, RADAR_CENTER_Y - (RADAR_MAX_RADIUS / 2) + 5);
+            radarCtx.fillText('30 cm', RADAR_CENTER_X + 5, RADAR_CENTER_Y - (RADAR_MAX_RADIUS * 3 / 4) + 5);
+
+            // Draw angle label at bottom
+            radarCtx.fillStyle = '#00ff00';
+            radarCtx.font = '12px monospace';
+            radarCtx.fillText('Angle: ' + currentSweepAngle + '°', 10, radarCanvas.height - 10);
+        }
+
+        // SocketIO event listeners for radar
+        socket.on('radar_status', function (data) {
+            if (data.status === 'scanning') {
+                radarStatus.textContent = 'Scanning...';
+                radarStatus.style.color = 'var(--accent-cyan)';
+                radarData = [];  // Clear previous data
+            } else if (data.status === 'complete') {
+                radarStatus.textContent = 'Scan Complete';
+                radarStatus.style.color = 'var(--accent-green)';
+            } else if (data.status === 'error') {
+                radarStatus.textContent = 'Error: ' + (data.message || 'Unknown error');
+                radarStatus.style.color = 'var(--accent-red)';
+            }
+        });
+
+        socket.on('radar_update', function (data) {
+            // Add new data point
+            radarData.push({
+                angle: data.angle,
+                distance: data.distance
+            });
+
+            // Update sweep angle
+            currentSweepAngle = data.angle;
+
+            // Redraw radar
+            drawRadar();
+        });
+
+        // Initial radar draw
+        drawRadar();
     </script>
 </body>
 
