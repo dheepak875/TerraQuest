@@ -6,13 +6,8 @@ import time
 import threading
 from robot_hat import Servo
 
-# Try importing vilib, if not available (e.g. on dev machine), mock it or skip
-try:
-    from vilib import Vilib
-    VILIB_AVAILABLE = True
-except ImportError:
-    VILIB_AVAILABLE = False
-    print("Warning: Vilib not found. Video feed integration will be skipped/mocked.")
+# Vilib/Camera availability flag
+VILIB_AVAILABLE = False
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
@@ -31,7 +26,10 @@ def log_request(self, code='-', size='-'):
 WSGIRequestHandler.log_request = log_request
 
 def start_vilib():
-    if VILIB_AVAILABLE:
+    global VILIB_AVAILABLE
+    try:
+        from vilib import Vilib
+        print("Initializing Vilib Camera...")
         Vilib.camera_start(vflip=False, hflip=False)
         # Disable local display (HDMI) to prevent "no gui" errors in SSH
         Vilib.display(local=False, web=True)
@@ -55,13 +53,18 @@ def start_vilib():
             except Exception as e:
                 print(f"Face Detection Enable Failed: {e}")
 
-        print("Vilib Camera Started")
+        VILIB_AVAILABLE = True
+        print("Vilib Camera Started Successfully")
+        
+    except (ImportError, RuntimeError) as e:
+        VILIB_AVAILABLE = False
+        print(f"⚠ CAMERA WARNING: Could not initialize Vilib/Camera: {e}")
+        print("Video feed will be disabled, but other systems will continue to run.")
 
-# Start camera in a separate thread to not block Flask
-if VILIB_AVAILABLE:
-    camera_thread = threading.Thread(target=start_vilib)
-    camera_thread.daemon = True
-    camera_thread.start()
+# Always start camera thread; it handles its own availability check internally
+camera_thread = threading.Thread(target=start_vilib)
+camera_thread.daemon = True
+camera_thread.start()
 
 # Integrate Rover & Scout
 import sys
