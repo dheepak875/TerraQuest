@@ -118,13 +118,14 @@
         .nano-card {
             background: var(--card-bg);
             border-radius: 6px;
-            padding: 6px;
+            padding: 4px 6px;
             border-left: 3px solid var(--accent-cyan);
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             min-height: 0;
+            overflow: hidden; /* Fx: Clamp charts inside */
         }
 
         .nano-label {
@@ -149,9 +150,10 @@
         .unit { font-size: 0.6rem; color: #888; margin-left: 2px; }
 
         .sparkline {
-            height: 20px;
+            height: 18px; /* Slightly shorter to prevent bleed */
             width: 100%;
             margin-top: 2px;
+            display: block;
         }
 
         /* COLUMN 3: THERMAL & STATS */
