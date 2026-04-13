@@ -11,1076 +11,298 @@
     <script src="{{ url_for('static', filename='js/chart.min.js') }}"></script>
     <style>
         :root {
-            --bg-color: #f4f6f8;
+            --bg-color: #f0f2f5;
             --card-bg: #ffffff;
             --accent-cyan: #008ba3;
-            /* Darker Cyan for visibility on white */
             --accent-green: #27ae60;
-            --text-main: #2c3e50;
+            --accent-red: #c0392b;
+            --text-main: #1a202c;
             --font-mono: 'Courier New', Courier, monospace;
         }
+
+        * { box-sizing: border-box; }
 
         body {
             background-color: var(--bg-color);
             color: var(--text-main);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 10px;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
         header {
-            text-align: center;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             border-bottom: 2px solid var(--accent-cyan);
-            padding-bottom: 10px;
-            margin-bottom: 20px;
+            padding-bottom: 5px;
+            margin-bottom: 8px;
+            flex: 0 0 auto;
         }
 
-        h1 {
-            color: var(--accent-cyan);
-            text-transform: uppercase;
-            letter-spacing: 2px;
+        #aws-hero {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            background: var(--card-bg);
+            border: 4px solid var(--accent-cyan);
+            border-radius: 12px;
+            padding: 10px 40px;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+
+        .aws-text, .aws-value {
+            font-size: 10rem;
+            font-weight: 900;
+            font-family: var(--font-mono);
+            line-height: 1;
             margin: 0;
         }
 
-        .container {
+        .aws-text { color: var(--accent-cyan); letter-spacing: -5px; }
+        .aws-value { color: var(--text-main); }
+
+        .dashboard-main {
+            flex: 1;
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            /* Equal split - Smaller Video, Wider Data */
-            gap: 15px;
-            max-width: 100%;
-            height: calc(100vh - 100px);
-            /* Fit screen minus header/footer */
-            margin: 0;
-            overflow: hidden;
-            /* Prevent body scroll */
-        }
-
-        /* Layout Columns */
-        .main-col {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            height: 100%;
-        }
-
-        .right-col {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            height: 100%;
-            overflow: hidden;
-            /* Important for inner scroll */
-        }
-
-        .video-feed {
-            flex: 6;
-            background-color: #000;
-            border: 1px solid var(--accent-green);
-            border-radius: 8px;
-            display: flex;
-            position: relative;
-            /* Key for overlay */
-            overflow: hidden;
-            width: 100%;
-            height: auto;
+            grid-template-columns: auto 1fr 320px;
+            gap: 12px;
             min-height: 0;
         }
 
-        .video-feed img {
+        /* SQUARE VIDEO */
+        .video-box {
+            height: 100%;
+            aspect-ratio: 1 / 1;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            border: 2px solid #ccc;
+        }
+
+        .video-box img {
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: cover; /* REMOVES BLACK BARS */
         }
 
-        /* Overlay Controls */
-        .video-controls-side {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: auto;
-            /* Let content dictate height */
-            background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0) 100%);
-            display: flex;
-            flex-direction: row;
-            /* Horizontal layout */
-            justify-content: space-between;
-            align-items: flex-end;
-            padding: 20px;
-            box-sizing: border-box;
-            /* Ensure padding includes width */
-            border: none;
-            pointer-events: none;
-            /* Let clicks pass through empty areas */
+        /* NANO SENSORS */
+        .sensor-nano-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 8px;
         }
 
-        /* Make children interactive */
-        .video-controls-side>* {
-            pointer-events: auto;
-        }
-
-        .cam-controls {
-            background: rgba(0, 0, 0, 0.5);
-            padding: 10px;
+        .nano-card {
+            background: var(--card-bg);
             border-radius: 8px;
-            border: 1px solid var(--accent-cyan);
-            min-width: 150px;
-            margin-bottom: 0;
-            /* Align with bottom */
+            padding: 8px;
+            border-left: 4px solid var(--accent-cyan);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
 
-        .cam-controls div {
-            font-size: 0.8rem;
-            color: #66fcf1;
-            /* Keep bright cyan for dark overlay */
-            margin-bottom: 5px;
+        .nano-label {
+            font-size: 0.65rem;
+            color: var(--accent-green);
+            text-transform: uppercase;
             font-weight: bold;
         }
 
-        .cam-controls input {
-            width: 100%;
-            cursor: pointer;
+        .nano-value {
+            font-size: 1.6rem;
+            font-weight: bold;
+            font-family: var(--font-mono);
         }
 
-        #joystick-zone {
-            width: 150px;
-            height: 150px;
-            position: relative;
-            /* Joystick lib handles internals */
+        .unit { font-size: 0.7rem; color: #888; margin-left: 3px; }
+
+        /* THERMAL */
+        .thermal-box {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
 
-        .thermal-card {
-            background-color: #000;
-            border: 2px solid #e74c3c;
+        .thermal-feed {
+            height: 180px;
+            background: #000;
             border-radius: 8px;
-            position: relative;
+            border: 2px solid var(--accent-red);
             overflow: hidden;
-            width: 100%;
-            aspect-ratio: 1 / 1;
-            /* Force Square */
-            display: block;
-            padding: 0 !important;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-            min-height: 0;
+            position: relative;
         }
 
         #thermal-canvas {
             width: 100%;
             height: 100%;
-            object-fit: fill;
-            /* Stretch to square */
             image-rendering: pixelated;
-            display: block;
         }
 
-
-
-        /* Sensor Column */
-        .sensor-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-auto-rows: min-content;
-            gap: 10px;
-            height: 100%;
-            overflow-y: auto;
-            max-height: none;
-            padding-right: 5px;
-        }
-
-        .compact-card {
-            /* Now handled by grid cells */
-            min-height: 0;
-            /* Allow shrinking */
-            /* justify-content: space-between; inside flex card usually is ok */
-        }
-
-        /* Override generic card */
-        .card {
-            background-color: var(--card-bg);
-            border-left: 5px solid var(--accent-cyan);
-            border-radius: 4px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-            /* Reset padding for compact */
-            padding: 5px;
-        }
-
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2px;
-        }
-
-        .card-title {
-            font-size: 0.75rem;
-            color: var(--accent-green);
-            text-transform: uppercase;
-        }
-
-        .card-value-display {
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: var(--text-main);
-            font-family: var(--font-mono);
-        }
-
-        .unit {
-            font-size: 0.7rem;
-            color: #555;
-        }
-
-        canvas {
-            max-height: 50px;
-            /* Force smaller size */
-            width: 100%;
-        }
-
-        /* Air Quality Badge */
-        .aq-badge {
-            padding: 1px 5px;
-            border-radius: 3px;
-            font-size: 0.7rem;
-            font-weight: bold;
-            color: #fff;
-        }
-
-        .aq-good {
-            background-color: #27ae60;
-        }
-
-        .aq-fair {
-            background-color: #f39c12;
-        }
-
-        .aq-poor {
-            background-color: #c0392b;
-        }
-
-        footer {
-            margin-top: 10px;
-            text-align: center;
-            font-size: 0.7rem;
-            color: #555;
-        }
-
-        /* ... utilities ... */
-
-        .video-overlay {
+        .overlay {
             position: absolute;
-            font-size: 0.8rem;
-            top: 10px;
-            left: 10px;
-            z-index: 10;
+            top: 5px;
+            left: 5px;
+            font-size: 0.6rem;
+            background: rgba(0,0,0,0.6);
+            color: #fff;
+            padding: 2px 4px;
+            border-radius: 2px;
             font-family: var(--font-mono);
-            font-weight: bold;
             pointer-events: none;
         }
 
-        .live-blink {
-            color: #ff3e3e;
-            animation: blink 1s infinite;
-            background: rgba(0, 0, 0, 0.4);
-            padding: 2px 6px;
-            border-radius: 3px;
+        #joystick-zone {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            width: 100px;
+            height: 100px;
         }
 
-        /* Mobile adjust */
-        @media (max-width: 900px) {
-            .container {
-                grid-template-columns: 1fr;
-                height: auto;
-                overflow: auto;
-            }
-
-            .video-feed {
-                height: 300px;
-                flex: none;
-            }
-
-            .video-controls-side {
-                position: relative;
-                background: black;
-                border-top: 1px solid var(--accent-green);
-                height: auto;
-                pointer-events: auto;
-                flex-direction: row;
-                /* Keep row logic */
-            }
-
-            .thermal-card {
-                height: 200px;
-                flex: none;
-            }
-
-            .sensor-grid {
-                height: auto;
-                grid-template-columns: 1fr 1fr;
-            }
+        footer {
+            flex: 0 0 auto;
+            text-align: center;
+            font-size: 0.7rem;
+            color: #888;
+            padding-top: 5px;
         }
-
-        .btn {
-            padding: 10px 20px;
-            font-family: var(--font-mono);
-            font-weight: bold;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            margin: 0 10px;
-            opacity: 0.8;
-            transition: opacity 0.2s;
-        }
-
-        .btn:hover {
-            opacity: 1;
-        }
-
-        .btn-start {
-            background-color: var(--accent-green);
-            color: white;
-        }
-
-        .btn-stop {
-            background-color: #e74c3c;
-            color: white;
-        }
+        
+        .btn { padding: 4px 12px; cursor: pointer; font-family: var(--font-mono); font-weight: bold; }
     </style>
 </head>
 
 <body>
 
     <header>
-        <h1>TerraQuest // Mission Control</h1>
-        <div style="font-family: var(--font-mono); font-size: 0.9rem; margin-top: 5px;">STATUS: <span
-                id="mission-status">IDLE</span> // CONNECTION: SECURE</div>
-        <div style="margin-top: 15px;">
-            <button id="btn-start" class="btn btn-start" onclick="toggleMission(true)">AUTONOMOUS SCOUTING</button>
-            <button id="btn-stop" class="btn btn-stop" onclick="toggleMission(false)" disabled
-                style="opacity: 0.5; cursor: not-allowed;">STOP MISSION</button>
-            <button id="btn-demo" class="btn btn-start" onclick="runDemo()" style="margin-left: 20px;">DEMO</button>
+        <div style="font-weight:bold; color:var(--accent-cyan); letter-spacing:1px;">TERRAQUEST // OS</div>
+        <div style="font-size: 0.8rem; font-family:var(--font-mono);">
+            MISSION: <span id="mission-status" style="color:var(--accent-green)">IDLE</span> | 
+            <button class="btn" onclick="toggleMission(true)">START</button> | 
+            <button class="btn" onclick="toggleMission(false)">STOP</button>
         </div>
     </header>
 
-    <div class="container">
-        <!-- Live Video Feed (Left Column) -->
-        <div class="video-feed" style="height: 100%;">
-            <div class="video-overlay live-blink">• LIVE FEED</div>
-            <img id="camera-stream" src="" alt="Waiting for Video Signal...">
+    <!-- HUGE AWS HERO -->
+    <div id="aws-hero">
+        <div class="aws-text">AWS</div>
+        <div class="aws-value" id="aws-score">--</div>
+    </div>
 
-            <!-- Manual Controls Sidebar -->
-            <div class="video-controls-side">
-                <div class="cam-controls">
-                    <div>Pan: <input type="range" min="-90" max="90" value="0" oninput="updateCam(this.value, null)">
-                    </div>
-                    <div style="margin-top:5px;">Tilt: <input type="range" min="-35" max="65" value="0"
-                            oninput="updateCam(null, this.value)"></div>
-                </div>
-                <div id="joystick-zone"></div>
+    <div class="dashboard-main">
+        <!-- SQUARE VIDEO CENTER -->
+        <div class="video-box">
+            <div class="overlay">PRIMARY OPTICS // SQUARE_CROP</div>
+            <img id="camera-stream" src="" alt="SIGNAL_LOST">
+            <div id="joystick-zone"></div>
+        </div>
+
+        <!-- NANO TELEMETRY -->
+        <div class="sensor-nano-grid">
+            <div class="nano-card"><div class="nano-label">Discovery (DPS)</div><div class="nano-value" style="color:#e67e22"><span id="dps-score">--</span></div></div>
+            <div class="nano-card"><div class="nano-label">Safety (TSS)</div><div class="nano-value" style="color:var(--accent-green)"><span id="tss-score">--</span></div></div>
+            <div class="nano-card">
+                <div class="nano-label">Magnetometer</div>
+                <div class="nano-value"><span id="mag-strength">--</span><span class="unit">µT</span></div>
+            </div>
+            <div class="nano-card">
+                <div class="nano-label">Light Intensity</div>
+                <div class="nano-value"><span id="lux-val">--</span><span class="unit">Lx</span></div>
+            </div>
+            <div class="nano-card">
+                <div class="nano-label">Atmosphere</div>
+                <div class="nano-value" style="font-size:1.2rem;"><span id="humidity">--</span>% / <span id="pressure">--</span>hPa</div>
+            </div>
+            <div class="nano-card">
+                <div class="nano-label">UV Index</div>
+                <div class="nano-value"><span id="uv-val">--</span><span class="unit">UVI</span></div>
             </div>
         </div>
 
-        <!-- Right Column Data Stack -->
-        <div class="right-col">
-
-            <!-- Top Panels: Thermal + Scores -->
-            <div style="display: flex; gap: 10px; height: 180px; flex: 0 0 auto;">
-
-                <!-- Thermal Feed (Square, Fixed) -->
-                <div class="card thermal-card"
-                    style="flex: 0 0 180px; height: 180px; padding: 0 !important; margin: 0; background-color: #000 !important; border-color: #e74c3c;">
-                    <div class="video-overlay" style="color:#e74c3c; font-size: 0.6rem; top: 5px; left: 5px;">• THERMAL
-                    </div>
-                    <canvas id="thermal-canvas" width="32" height="24"
-                        style="width: 100%; height: 100%; max-height: none !important; object-fit: fill; display: block;"></canvas>
-                </div>
-
-                <!-- Scores Stack (Flex Column to fill height) -->
-                <div style="display: flex; flex-direction: column; gap: 10px; flex: 1;">
-
-                    <!-- AWS Panel -->
-                    <div id="aws-panel" class="card"
-                        style="flex: 1; border: 2px solid var(--accent-cyan); background: linear-gradient(135deg, rgba(102, 252, 241, 0.15), var(--card-bg)); padding: 10px; justify-content: center; transition: all 0.3s ease;">
-                        <div
-                            style="display: flex; justify-content: space-between; align-items: center; padding: 0 10px;">
-                            <div class="card-title" style="font-size: 2.25rem; font-weight: 900; letter-spacing: 2px;">
-                                AWS SCORE</div>
-                            <div class="card-value-display">
-                                <span id="aws-score" style="color:var(--accent-cyan); font-size: 2rem;">--</span>
-                                <span class="unit" style="font-size: 0.8rem;">/100</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Sub-Scores Row: DPS (Discovery) | TSS (Safety) -->
-                    <div style="display: flex; gap: 5px; flex: 1;">
-
-                        <!-- DPS Panel -->
-                        <div id="dps-panel" class="card"
-                            style="flex: 1; border: 2px solid #e67e22; background: linear-gradient(135deg, rgba(230, 126, 34, 0.15), var(--card-bg)); padding: 5px; justify-content: center; transition: all 0.3s ease;">
-                            <div style="text-align: center;">
-                                <div class="card-title"
-                                    style="font-size: 1.5rem; font-weight: 900; color: #e67e22; letter-spacing: 1px;">
-                                    DPS</div>
-                                <div class="card-value-display">
-                                    <span id="dps-score" style="color:#e67e22; font-size: 1.5rem;">--</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- TSS Panel -->
-                        <div id="tss-panel" class="card"
-                            style="flex: 1; border: 2px solid var(--accent-green); background: linear-gradient(135deg, rgba(46, 204, 113, 0.15), var(--card-bg)); padding: 5px; justify-content: center; transition: all 0.3s ease;">
-                            <div style="text-align: center;">
-                                <div class="card-title"
-                                    style="font-size: 1.5rem; font-weight: 900; letter-spacing: 1px;">TSS</div>
-                                <div class="card-value-display">
-                                    <span id="tss-score" style="color:var(--accent-green); font-size: 1.5rem;">--</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
+        <!-- THERMAL & AUX -->
+        <div class="thermal-box">
+            <div class="thermal-feed">
+                <div class="overlay" style="background:rgba(192,57,43,0.8)">THERMAL_IMAGER</div>
+                <canvas id="thermal-canvas" width="32" height="24"></canvas>
             </div>
-
-            <!-- Sensor Data Grid -->
-            <div class="sensor-grid" style="flex: 1; overflow-y: auto;">
-                <!-- Light Sensor -->
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">Light Intensity</div>
-                    </div>
-                    <div class="card-value-display">
-                        <span id="lux-val">--</span> <span class="unit">Lux</span>
-                    </div>
-                    <canvas id="chart-light"></canvas>
-                </div>
-
-                <!-- UV Sensor -->
-                <div class="card" id="uv-card">
-                    <div class="card-header">
-                        <div class="card-title">UV Monitor</div>
-                        <span id="uv-status" class="aq-badge aq-good">NORMAL</span>
-                    </div>
-                    <div class="card-value-display" style="text-align: center;">
-                        <span id="uv-val" style="color:#e74c3c; font-size: 2rem;">0</span>
-                        <span class="unit">Index</span>
-                    </div>
-                    <div style="font-size:0.7rem; color:#888; text-align:center;">Safe &lt; 3</div>
-                </div>
-
-                <!-- Metal Detector -->
-                <div class="card" id="mag-card">
-                    <div class="card-header">
-                        <div class="card-title">Metal Detector</div>
-                        <span id="mag-status" class="aq-badge aq-good">CLEAR</span>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; align-items:flex-end;">
-                        <div class="card-value-display"><span id="mag-strength">--</span> <span class="unit">µT</span>
-                        </div>
-                        <div style="font-size:0.8rem; color:#aaa;">ANOMALY: <span id="mag-anomaly"
-                                style="color:#e74c3c">0</span></div>
-                    </div>
-                    <canvas id="chart-mag"></canvas>
-                </div>
-
-                <!-- Atmosphere -->
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">Atmosphere</div>
-                        <div class="card-value-display">
-                            <span id="humidity">--</span><span class="unit">%</span> /
-                            <span id="pressure" style="font-size:1rem">--</span><span class="unit">hPa</span>
-                        </div>
-                    </div>
-                    <canvas id="chart-humid"></canvas>
-                </div>
-
-                <!-- Air Quality -->
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">Air Quality</div>
-                        <span id="aq-badge" class="aq-badge aq-good">GOOD</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-                        <div class="card-value-display"><span id="co2">--</span> <span class="unit">Ω</span></div>
-                        <div style="font-size:0.8rem; color:#888;">Higher = Cleaner</div>
-                    </div>
-                    <canvas id="chart-gas"></canvas>
-                </div>
-
-                <!-- Positional -->
-                <div class="card" style="flex-direction:row; justify-content:space-between; align-items:center;">
-                    <div>
-                        <div class="card-title">Obstacle Dist</div>
-                        <div class="card-value-display"><span id="moisture">--</span> <span class="unit">cm</span></div>
-                    </div>
-                    <div style="text-align:right">
-                        <div class="card-title">Altitude</div>
-                        <div class="card-value-display"><span id="altitude">--</span> <span class="unit">m</span></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ToF Radar Panel -->
-            <div class="card" style="margin-top: 10px; padding: 15px; max-width: 430px;">
-                <h3 style="margin: 0 0 10px 0; color: #00ff00; font-size: 1.2rem; text-align: center;">ToF Radar</h3>
-                <canvas id="radarCanvas" width="400" height="400"
-                    style="display: block; margin: 0 auto; background: #000000; border: 2px solid #00ff00; border-radius: 4px;"></canvas>
-                <div id="radarStatus" style="text-align: center; margin-top: 10px; color: #00ff00; font-size: 14px;">
-                    Inactive - Click DEMO to activate
-                </div>
+            <div class="nano-card" style="flex:1; border-left:4px solid var(--accent-red); justify-content:center; align-items:center; text-align:center;">
+                <div class="nano-label">Core Latency</div>
+                <div class="nano-value" id="ping">--</div>
+                <div class="unit">milliseconds</div>
             </div>
         </div>
     </div>
 
     <footer>
-        System ID: TQ-PROTO-01 | Latency: <span id="ping">12</span>ms
+        TerraQuest Proto-Link v4.5 | <button onclick="runDemo()">LAUNCH DEMO</button>
     </footer>
 
     <script>
-        // --- Setup Charts ---
-        Chart.defaults.color = '#333';
-        Chart.defaults.borderColor = '#ddd';
-
-        function createChart(ctx, label, color) {
-            return new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: Array(30).fill(''),
-                    datasets: [{
-                        label: label,
-                        data: Array(30).fill(null),
-                        borderColor: color,
-                        tension: 0.4,
-                        borderWidth: 2,
-                        pointRadius: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { display: false },
-                        y: { display: true, grid: { color: '#eee' } }
-                    },
-                    animation: { duration: 0 }
-                }
-            });
-        }
-
-        const chartMag = createChart(document.getElementById('chart-mag'), 'Mag Field', '#e67e22');
-        const chartLight = createChart(document.getElementById('chart-light'), 'Light (Lux)', '#f39c12'); // Darker Yellow
-        const chartHumid = createChart(document.getElementById('chart-humid'), 'Humidity', '#2980b9'); // Darker Blue
-        const chartGas = createChart(document.getElementById('chart-gas'), 'Gas Res', '#27ae60'); // Darker Green
-
-        function updateChart(chart, val) {
-            const data = chart.data.datasets[0].data;
-            data.push(val);
-            data.shift();
-            chart.update();
-        }
-
-        // --- Audio System ---
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        let audioEnabled = false;
-
-        function playBeep(frequency = 1000, duration = 0.1) {
-            if (!audioEnabled) return;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'square';
-            osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + duration);
-        }
-
-        // Resume audio on first click
-        document.body.addEventListener('click', () => {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            audioEnabled = true;
-        }, { once: true });
-
-        // --- Core Logic ---
-
-        const protocol = window.location.protocol;
         const hostname = window.location.hostname;
         document.getElementById('camera-stream').src = `http://${hostname}:9000/mjpg`;
 
         async function updateSensors() {
             try {
-                const response = await fetch('/data');
-                const data = await response.json();
-
-                // Values
-                // document.getElementById('temp').innerText = data.temp; // Removed Temp Card
+                const res = await fetch('/data');
+                const data = await res.json();
+                document.getElementById('aws-score').innerText = data.aws;
+                document.getElementById('dps-score').innerText = data.dps;
+                document.getElementById('tss-score').innerText = data.tss;
+                document.getElementById('lux-val').innerText = data.lux;
+                document.getElementById('uv-val').innerText = data.uv_index;
                 document.getElementById('humidity').innerText = data.humidity;
                 document.getElementById('pressure').innerText = data.pressure;
-                document.getElementById('co2').innerText = data.co2;
-                document.getElementById('moisture').innerText = data.moisture;
-                document.getElementById('altitude').innerText = data.altitude;
+                document.getElementById('mag-strength').innerText = data.magnetic;
+                document.getElementById('ping').innerText = Math.floor(Math.random()*15)+10;
 
-                // Mag Data
-                const magStrength = data.magnetic;
-                const magAnomaly = data.mag_anomaly;
-                document.getElementById('mag-strength').innerText = magStrength;
-                document.getElementById('mag-anomaly').innerText = magAnomaly;
-
-                // Light / UV Data
-                const lux = data.lux;
-                const uvIndex = data.uv_index;
-                document.getElementById('lux-val').innerText = lux;
-                document.getElementById('uv-val').innerText = uvIndex;
-
-                // NEW: AWS, TSS, DPS with Dynamic Color Coding
-                const awsScore = data.aws;
-                const tssScore = data.tss;
-                const dpsScore = data.dps;
-
-                document.getElementById('aws-score').innerText = awsScore;
-                document.getElementById('tss-score').innerText = tssScore;
-                document.getElementById('dps-score').innerText = dpsScore;
-
-                // AWS Panel Color (70+ = Green, 40-69 = Yellow, <40 = Red)
-                const awsPanel = document.getElementById('aws-panel');
-                if (awsScore >= 70) {
-                    awsPanel.style.background = 'linear-gradient(135deg, #27ae60, #2ecc71)';
-                    awsPanel.style.borderColor = '#27ae60';
-                } else if (awsScore >= 40) {
-                    awsPanel.style.background = 'linear-gradient(135deg, #f39c12, #f1c40f)';
-                    awsPanel.style.borderColor = '#f39c12';
-                } else {
-                    awsPanel.style.background = 'linear-gradient(135deg, #c0392b, #e74c3c)';
-                    awsPanel.style.borderColor = '#c0392b';
-                }
-
-                // DPS Panel Color (60+ = Green, 30-59 = Yellow, <30 = Red)
-                const dpsPanel = document.getElementById('dps-panel');
-                if (dpsScore >= 60) {
-                    dpsPanel.style.background = 'linear-gradient(135deg, #27ae60, #2ecc71)';
-                    dpsPanel.style.borderColor = '#27ae60';
-                } else if (dpsScore >= 30) {
-                    dpsPanel.style.background = 'linear-gradient(135deg, #f39c12, #f1c40f)';
-                    dpsPanel.style.borderColor = '#f39c12';
-                } else {
-                    dpsPanel.style.background = 'linear-gradient(135deg, #c0392b, #e74c3c)';
-                    dpsPanel.style.borderColor = '#c0392b';
-                }
-
-                // TSS Panel Color (70+ = Green, 40-69 = Yellow, <40 = Red)
-                const tssPanel = document.getElementById('tss-panel');
-                if (tssScore >= 70) {
-                    tssPanel.style.background = 'linear-gradient(135deg, #27ae60, #2ecc71)';
-                    tssPanel.style.borderColor = '#27ae60';
-                } else if (tssScore >= 40) {
-                    tssPanel.style.background = 'linear-gradient(135deg, #f39c12, #f1c40f)';
-                    tssPanel.style.borderColor = '#f39c12';
-                } else {
-                    tssPanel.style.background = 'linear-gradient(135deg, #c0392b, #e74c3c)';
-                    tssPanel.style.borderColor = '#c0392b';
-                }
-
-                // Ping
-                document.getElementById('ping').innerText = Math.floor(Math.random() * 20) + 10;
-
-                // Charts
-                updateChart(chartMag, magStrength);
-                updateChart(chartLight, lux);
-                updateChart(chartHumid, data.humidity);
-                updateChart(chartGas, data.co2);
-
-                // UV Logic
-                const uvCard = document.getElementById('uv-card');
-                const uvStatus = document.getElementById('uv-status');
-
-                // UV Warning threshold
-                if (uvIndex > 5) {
-                    uvStatus.innerText = "HIGH UV!";
-                    uvStatus.className = "aq-badge aq-poor"; // Red
-                    // Flash Effect
-                    if (Date.now() % 500 < 250) {
-                        uvCard.style.backgroundColor = "#c0392b";
-                    } else {
-                        uvCard.style.backgroundColor = "var(--card-bg)";
-                    }
-                } else if (uvIndex > 2) {
-                    uvStatus.innerText = "MODERATE";
-                    uvStatus.className = "aq-badge aq-fair";
-                    uvCard.style.backgroundColor = "var(--card-bg)";
-                } else {
-                    uvStatus.innerText = "NORMAL";
-                    uvStatus.className = "aq-badge aq-good"; // Green
-                    uvCard.style.backgroundColor = "var(--card-bg)";
-                }
-
-                // Metal Detection Logic
-                const magCard = document.getElementById('mag-card');
-                const magStatus = document.getElementById('mag-status');
-
-                // Threshold for detection (Anomaly > 50 uT is significant)
-                if (magAnomaly > 50) {
-                    magStatus.innerText = "DETECTED!";
-                    magStatus.className = "aq-badge aq-poor"; // Red
-                    // Flash Effect
-                    if (Date.now() % 500 < 250) {
-                        magCard.style.backgroundColor = "#c0392b";
-                    } else {
-                        magCard.style.backgroundColor = "var(--card-bg)";
-                    }
-                    if (Math.random() > 0.5) playBeep(2000 + Math.random() * 500, 0.05);
-                } else {
-                    magStatus.innerText = "Scanning...";
-                    magStatus.className = "aq-badge aq-good"; // Green
-                    magCard.style.backgroundColor = "var(--card-bg)";
-                }
-
-                // AQI Logic (Gas Resistance)
-                // > 50k = Excellent, 10k-50k = Good, < 10k = Poor
-                const gas = data.co2;
-                const badge = document.getElementById('aq-badge');
-                if (gas > 50000) {
-                    badge.innerText = "EXCELLENT";
-                    badge.className = "aq-badge aq-good";
-                } else if (gas > 10000) {
-                    badge.innerText = "GOOD";
-                    badge.className = "aq-badge aq-fair";
-                } else {
-                    badge.innerText = "POOR";
-                    badge.className = "aq-badge aq-poor";
-                }
-
-            } catch (error) {
-                console.error('Error fetching sensor data:', error);
-            }
+                const awsHero = document.getElementById('aws-hero');
+                awsHero.style.borderColor = data.aws < 40 ? "var(--accent-red)" : (data.aws < 70 ? "#f39c12" : "var(--accent-cyan)");
+            } catch (e) {}
         }
+        setInterval(updateSensors, 1000);
 
-        async function toggleMission(start) {
-            const startBtn = document.getElementById('btn-start');
-            const stopBtn = document.getElementById('btn-stop');
-            const endpoint = start ? '/api/scout/start' : '/api/scout/stop';
-
-            try {
-                const res = await fetch(endpoint, { method: 'POST' });
-                const data = await res.json();
-                console.log(data);
-
-                if (start) {
-                    // Disable start button after pressing
-                    startBtn.disabled = true;
-                    startBtn.style.opacity = '0.5';
-                    startBtn.style.cursor = 'not-allowed';
-
-                    // Enable stop button
-                    stopBtn.disabled = false;
-                    stopBtn.style.opacity = '1';
-                    stopBtn.style.cursor = 'pointer';
-
-                    updateMissionUI(true);
-                } else {
-                    // Re-enable start button when stopped
-                    startBtn.disabled = false;
-                    startBtn.style.opacity = '1';
-                    startBtn.style.cursor = 'pointer';
-
-                    // Disable stop button
-                    stopBtn.disabled = true;
-                    stopBtn.style.opacity = '0.5';
-                    stopBtn.style.cursor = 'not-allowed';
-
-                    updateMissionUI(false);
-                }
-            } catch (e) {
-                console.error("Scout toggle failed", e);
-            }
-        }
-
-        async function runDemo() {
-            const demoBtn = document.getElementById('btn-demo');
-            try {
-                demoBtn.disabled = true;
-                demoBtn.style.opacity = '0.5';
-                demoBtn.innerText = 'RUNNING...';
-
-                const res = await fetch('/api/demo', { method: 'POST' });
-                const data = await res.json();
-                console.log(data);
-
-                // Re-enable after demo completes (backend will auto-stop)
-                setTimeout(() => {
-                    demoBtn.disabled = false;
-                    demoBtn.style.opacity = '1';
-                    demoBtn.innerText = 'DEMO';
-                }, 15000); // 15 seconds for longer demo
-            } catch (e) {
-                console.error("Demo failed", e);
-                demoBtn.disabled = false;
-                demoBtn.style.opacity = '1';
-                demoBtn.innerText = 'DEMO';
-            }
-        }
-
-        function updateMissionUI(active) {
-            const statusEl = document.getElementById('mission-status');
-            if (active) {
-                statusEl.innerText = "ACTIVE";
-                statusEl.style.color = "var(--accent-cyan)";
-            } else {
-                statusEl.innerText = "IDLE";
-                statusEl.style.color = "#888";
-            }
-        }
-
-        async function checkStatus() {
-            try {
-                const res = await fetch('/api/mission/status');
-                const data = await res.json();
-                updateMissionUI(data.active);
-            } catch (e) { }
-        }
+        var joystickManager = nipplejs.create({
+            zone: document.getElementById('joystick-zone'),
+            mode: 'static', position: { left: '50%', top: '50%' },
+            color: 'var(--accent-cyan)', size: 80
+        });
+        joystickManager.on('move', (evt, data) => {
+            fetch('/api/control/move', { method: 'POST', body: JSON.stringify({ speed: Math.round(data.vector.y * 100), angle: Math.round(data.vector.x * 35) }), headers: { 'Content-Type': 'application/json' }});
+        });
+        joystickManager.on('end', () => fetch('/api/control/move', { method: 'POST', body: JSON.stringify({ speed:0, angle:0 }), headers: { 'Content-Type': 'application/json' }}));
 
         const thermalCanvas = document.getElementById('thermal-canvas');
         const thermalCtx = thermalCanvas.getContext('2d');
-
-        async function updateThermal() {
+        setInterval(async () => {
             try {
                 const res = await fetch('/api/thermal');
                 const data = await res.json();
                 if (!data || data.length !== 768) return;
-
                 const imgData = thermalCtx.createImageData(32, 24);
-
-                // Simple auto-scaling color map
-                let minT = 20; // fixed range for stability or
-                let maxT = 35; // dynamic range
-
-                // Optional: Dynamic range 
-                // minT = Math.min(...data);
-                // maxT = Math.max(...data);
-
                 for (let i = 0; i < 768; i++) {
-                    const temp = data[i];
-                    const t = (temp - minT) / (maxT - minT); // norm 0-1
-
-                    // Simple Heatmap: Blue -> Green -> Red
-                    let r = 0, g = 0, b = 0;
-                    if (t < 0.5) {
-                        // Blue to Green
-                        b = 255 * (1 - t * 2);
-                        g = 255 * (t * 2);
-                    } else {
-                        // Green to Red
-                        g = 255 * (1 - (t - 0.5) * 2);
-                        r = 255 * ((t - 0.5) * 2);
-                    }
-
-                    const idx = i * 4;
-                    imgData.data[idx] = r;     // R
-                    imgData.data[idx + 1] = g; // G
-                    imgData.data[idx + 2] = b; // B
-                    imgData.data[idx + 3] = 255; // Alpha
+                    const t = (data[i] - 20) / 15;
+                    imgData.data[i*4] = 255 * t;
+                    imgData.data[i*4+2] = 255 * (1-t);
+                    imgData.data[i*4+3] = 255;
                 }
                 thermalCtx.putImageData(imgData, 0, 0);
+            } catch (e) {}
+        }, 1000);
 
-            } catch (e) { }
-        }
-
-        // Polling Rates
-        setInterval(updateSensors, 500); // 2Hz for normal graph speed
-        setInterval(updateThermal, 500); // 2Hz for thermal (heavy payload)
-        setInterval(checkStatus, 2000);  // Low priority status checks
-
-        // --- Manual Control Logic ---
-        var joystickManager = nipplejs.create({
-            zone: document.getElementById('joystick-zone'),
-            mode: 'static',
-            position: { left: '50%', top: '50%' },
-            color: 'var(--accent-cyan)',
-            size: 150
-        });
-
-        joystickManager.on('move', function (evt, data) {
-            if (!data.vector) return;
-            const speed = Math.round(data.vector.y * 100);
-            const angle = Math.round(data.vector.x * 35);
-            sendMove(speed, angle);
-        });
-
-        joystickManager.on('end', function () {
-            sendMove(0, 0);
-        });
-
-        let currentPan = 0;
-        let currentTilt = 0;
-        function updateCam(pan, tilt) {
-            if (pan !== null) currentPan = parseInt(pan);
-            if (tilt !== null) currentTilt = parseInt(tilt);
-
-            fetch('/api/control/camera', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ pan: currentPan, tilt: currentTilt })
-            });
-        }
-
-        let lastMoveTime = 0;
-        function sendMove(speed, angle) {
-            const now = Date.now();
-            if (now - lastMoveTime < 100 && speed !== 0) return;
-            lastMoveTime = now;
-
-            fetch('/api/control/move', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ speed: speed, angle: angle })
-            });
-        }
-
-        // --- ToF Radar Visualization ---
-        const radarCanvas = document.getElementById('radarCanvas');
-        const radarCtx = radarCanvas.getContext('2d');
-        const radarStatus = document.getElementById('radarStatus');
-
-        let radarData = [];  // Store radar points: [{angle, distance}, ...]
-        let currentSweepAngle = -90;  // Current sweep line angle
-
-        const RADAR_CENTER_X = 200;
-        const RADAR_CENTER_Y = 200;
-        const RADAR_MAX_RADIUS = 180;
-        const RADAR_MAX_DISTANCE = 400;  // cm
-
-        function drawRadar() {
-            // Clear canvas
-            radarCtx.clearRect(0, 0, radarCanvas.width, radarCanvas.height);
-
-            // Draw concentric circles (range rings) - GREEN
-            radarCtx.strokeStyle = '#00ff00';
-            radarCtx.lineWidth = 1.5;
-            for (let i = 1; i <= 4; i++) {
-                const radius = (RADAR_MAX_RADIUS / 4) * i;
-                radarCtx.beginPath();
-                radarCtx.arc(RADAR_CENTER_X, RADAR_CENTER_Y, radius, 0, 2 * Math.PI);
-                radarCtx.stroke();
-            }
-
-            // Draw angle lines (every 10 degrees for denser grid) - GREEN
-            radarCtx.strokeStyle = '#00ff00';
-            radarCtx.lineWidth = 0.5;
-            for (let angle = 0; angle < 360; angle += 10) {
-                const rad = (angle - 90) * Math.PI / 180;
-                radarCtx.beginPath();
-                radarCtx.moveTo(RADAR_CENTER_X, RADAR_CENTER_Y);
-                radarCtx.lineTo(
-                    RADAR_CENTER_X + RADAR_MAX_RADIUS * Math.cos(rad),
-                    RADAR_CENTER_Y + RADAR_MAX_RADIUS * Math.sin(rad)
-                );
-                radarCtx.stroke();
-            }
-
-            // Draw center point - BRIGHT GREEN
-            radarCtx.fillStyle = '#00ff00';
-            radarCtx.beginPath();
-            radarCtx.arc(RADAR_CENTER_X, RADAR_CENTER_Y, 4, 0, 2 * Math.PI);
-            radarCtx.fill();
-
-            // Draw sweep fade effect (like the reference image)
-            const sweepRad = (currentSweepAngle - 90) * Math.PI / 180;
-            const gradient = radarCtx.createRadialGradient(RADAR_CENTER_X, RADAR_CENTER_Y, 0, RADAR_CENTER_X, RADAR_CENTER_Y, RADAR_MAX_RADIUS);
-            gradient.addColorStop(0, 'rgba(0, 255, 0, 0.3)');
-            gradient.addColorStop(1, 'rgba(0, 255, 0, 0)');
-
-            radarCtx.fillStyle = gradient;
-            radarCtx.beginPath();
-            radarCtx.moveTo(RADAR_CENTER_X, RADAR_CENTER_Y);
-            radarCtx.arc(RADAR_CENTER_X, RADAR_CENTER_Y, RADAR_MAX_RADIUS, sweepRad - Math.PI / 6, sweepRad);
-            radarCtx.lineTo(RADAR_CENTER_X, RADAR_CENTER_Y);
-            radarCtx.fill();
-
-            // Draw radar data points - BRIGHT GREEN with glow
-            radarData.forEach(point => {
-                if (point.distance > 0 && point.distance <= RADAR_MAX_DISTANCE) {
-                    const rad = (point.angle - 90) * Math.PI / 180;
-                    const radius = (point.distance / RADAR_MAX_DISTANCE) * RADAR_MAX_RADIUS;
-                    const x = RADAR_CENTER_X + radius * Math.cos(rad);
-                    const y = RADAR_CENTER_Y + radius * Math.sin(rad);
-
-                    // Bright green with glow effect
-                    radarCtx.shadowBlur = 10;
-                    radarCtx.shadowColor = '#00ff00';
-                    radarCtx.fillStyle = '#00ff00';
-                    radarCtx.beginPath();
-                    radarCtx.arc(x, y, 3, 0, 2 * Math.PI);
-                    radarCtx.fill();
-                    radarCtx.shadowBlur = 0;
-                }
-            });
-
-            // Draw sweep line - BRIGHT GREEN
-            radarCtx.strokeStyle = '#00ff00';
-            radarCtx.lineWidth = 2;
-            radarCtx.shadowBlur = 15;
-            radarCtx.shadowColor = '#00ff00';
-            radarCtx.beginPath();
-            radarCtx.moveTo(RADAR_CENTER_X, RADAR_CENTER_Y);
-            radarCtx.lineTo(
-                RADAR_CENTER_X + RADAR_MAX_RADIUS * Math.cos(sweepRad),
-                RADAR_CENTER_Y + RADAR_MAX_RADIUS * Math.sin(sweepRad)
-            );
-            radarCtx.stroke();
-            radarCtx.shadowBlur = 0;
-
-            // Draw range labels - GREEN
-            radarCtx.fillStyle = '#00ff00';
-            radarCtx.font = '11px monospace';
-            radarCtx.fillText('10 cm', RADAR_CENTER_X + 5, RADAR_CENTER_Y - (RADAR_MAX_RADIUS / 4) + 5);
-            radarCtx.fillText('20 cm', RADAR_CENTER_X + 5, RADAR_CENTER_Y - (RADAR_MAX_RADIUS / 2) + 5);
-            radarCtx.fillText('30 cm', RADAR_CENTER_X + 5, RADAR_CENTER_Y - (RADAR_MAX_RADIUS * 3 / 4) + 5);
-
-            // Draw angle label at bottom
-            radarCtx.fillStyle = '#00ff00';
-            radarCtx.font = '12px monospace';
-            radarCtx.fillText('Angle: ' + currentSweepAngle + '°', 10, radarCanvas.height - 10);
-        }
-
-        // SocketIO event listeners for radar
-        socket.on('radar_status', function (data) {
-            if (data.status === 'scanning') {
-                radarStatus.textContent = 'Scanning...';
-                radarStatus.style.color = 'var(--accent-cyan)';
-                radarData = [];  // Clear previous data
-            } else if (data.status === 'complete') {
-                radarStatus.textContent = 'Scan Complete';
-                radarStatus.style.color = 'var(--accent-green)';
-            } else if (data.status === 'error') {
-                radarStatus.textContent = 'Error: ' + (data.message || 'Unknown error');
-                radarStatus.style.color = 'var(--accent-red)';
-            }
-        });
-
-        socket.on('radar_update', function (data) {
-            // Add new data point
-            radarData.push({
-                angle: data.angle,
-                distance: data.distance
-            });
-
-            // Update sweep angle
-            currentSweepAngle = data.angle;
-
-            // Redraw radar
-            drawRadar();
-        });
-
-        // Initial radar draw
-        drawRadar();
+        async function toggleMission(s) { await fetch(s?'/api/scout/start':'/api/scout/stop', {method:'POST'}); document.getElementById('mission-status').innerText = s?"ACTIVE":"IDLE"; }
+        async function runDemo() { await fetch('/api/demo', {method:'POST'}); }
     </script>
 </body>
-
-
 </html>
