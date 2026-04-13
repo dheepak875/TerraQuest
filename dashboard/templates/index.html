@@ -11,7 +11,7 @@
     <script src="{{ url_for('static', filename='js/chart.min.js') }}"></script>
     <style>
         :root {
-            --bg-color: #f0f2f5;
+            --bg-color: #f8f9fa;
             --card-bg: #ffffff;
             --accent-cyan: #008ba3;
             --accent-green: #27ae60;
@@ -40,109 +40,136 @@
             justify-content: space-between;
             align-items: center;
             border-bottom: 2px solid var(--accent-cyan);
-            padding-bottom: 5px;
-            margin-bottom: 8px;
+            padding-bottom: 3px;
+            margin-bottom: 5px;
             flex: 0 0 auto;
         }
 
+        /* COMPACT HERO SECTION */
         #aws-hero {
             flex: 0 0 auto;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 20px;
+            gap: 15px;
             background: var(--card-bg);
-            border: 4px solid var(--accent-cyan);
-            border-radius: 12px;
-            padding: 10px 40px;
-            margin-bottom: 10px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            border: 3px solid var(--accent-cyan);
+            border-radius: 10px;
+            padding: 5px 30px;
+            margin-bottom: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
 
         .aws-text, .aws-value {
-            font-size: 10rem;
+            font-size: 7rem; /* STABILIZED SIZE */
             font-weight: 900;
             font-family: var(--font-mono);
-            line-height: 1;
+            line-height: .9;
             margin: 0;
+            padding: 0;
         }
 
-        .aws-text { color: var(--accent-cyan); letter-spacing: -5px; }
+        .aws-text { color: var(--accent-cyan); letter-spacing: -3px; }
         .aws-value { color: var(--text-main); }
 
-        .dashboard-main {
+        /* RIGID 3-COLUMN WORKSPACE */
+        .workspace-grid {
             flex: 1;
             display: grid;
-            grid-template-columns: auto 1fr 320px;
-            gap: 12px;
+            grid-template-columns: 35% 42% auto; /* Video | Sensors | Thermal */
+            gap: 10px;
             min-height: 0;
         }
 
-        /* SQUARE VIDEO */
-        .video-box {
-            height: 100%;
+        /* COLUMN 1: SQUARE VIDEO */
+        .col-video {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            min-height: 0;
+        }
+
+        .square-video-container {
+            width: 100%;
             aspect-ratio: 1 / 1;
             background: #000;
-            border-radius: 10px;
+            border-radius: 8px;
             overflow: hidden;
             position: relative;
-            border: 2px solid #ccc;
+            border: 1px solid #ccc;
+            max-height: 100%;
         }
 
-        .video-box img {
+        .square-video-container img {
             width: 100%;
             height: 100%;
-            object-fit: cover; /* REMOVES BLACK BARS */
+            object-fit: cover; /* NO BLACK BARS */
         }
 
-        /* NANO SENSORS */
-        .sensor-nano-grid {
+        /* COLUMN 2: SENSOR NANO-GRID (2x4) */
+        .col-sensors {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            grid-template-rows: repeat(3, 1fr);
-            gap: 8px;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: repeat(4, 1fr);
+            gap: 6px;
+            min-height: 0;
         }
 
         .nano-card {
             background: var(--card-bg);
-            border-radius: 8px;
-            padding: 8px;
-            border-left: 4px solid var(--accent-cyan);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            border-radius: 6px;
+            padding: 6px;
+            border-left: 3px solid var(--accent-cyan);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: space-between;
+            min-height: 0;
         }
 
         .nano-label {
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             color: var(--accent-green);
             text-transform: uppercase;
             font-weight: bold;
         }
 
+        .nano-main {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
         .nano-value {
-            font-size: 1.6rem;
+            font-size: 1.3rem;
             font-weight: bold;
             font-family: var(--font-mono);
         }
 
-        .unit { font-size: 0.7rem; color: #888; margin-left: 3px; }
+        .unit { font-size: 0.6rem; color: #888; margin-left: 2px; }
 
-        /* THERMAL */
-        .thermal-box {
+        .sparkline {
+            height: 20px;
+            width: 100%;
+            margin-top: 2px;
+        }
+
+        /* COLUMN 3: THERMAL & STATS */
+        .col-stats {
             display: flex;
             flex-direction: column;
             gap: 8px;
+            min-height: 0;
         }
 
         .thermal-feed {
-            height: 180px;
+            aspect-ratio: 4 / 3;
             background: #000;
             border-radius: 8px;
-            border: 2px solid var(--accent-red);
+            border: 1px solid var(--accent-red);
             overflow: hidden;
             position: relative;
+            flex: 0 0 auto;
         }
 
         #thermal-canvas {
@@ -151,11 +178,25 @@
             image-rendering: pixelated;
         }
 
+        .stat-card {
+            flex: 1;
+            background: var(--card-bg);
+            border-radius: 6px;
+            padding: 8px;
+            border-top: 3px solid #888;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        /* UTILS */
         .overlay {
             position: absolute;
             top: 5px;
             left: 5px;
-            font-size: 0.6rem;
+            font-size: 0.55rem;
             background: rgba(0,0,0,0.6);
             color: #fff;
             padding: 2px 4px;
@@ -166,142 +207,198 @@
 
         #joystick-zone {
             position: absolute;
-            bottom: 10px;
-            right: 10px;
-            width: 100px;
-            height: 100px;
+            bottom: 5px;
+            right: 5px;
+            width: 60px;
+            height: 60px;
         }
 
         footer {
             flex: 0 0 auto;
             text-align: center;
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             color: #888;
-            padding-top: 5px;
+            padding-top: 3px;
         }
-        
-        .btn { padding: 4px 12px; cursor: pointer; font-family: var(--font-mono); font-weight: bold; }
+
+        .btn { padding: 2px 8px; cursor: pointer; font-size: 0.7rem; font-family: var(--font-mono); }
     </style>
 </head>
 
 <body>
 
     <header>
-        <div style="font-weight:bold; color:var(--accent-cyan); letter-spacing:1px;">TERRAQUEST // OS</div>
-        <div style="font-size: 0.8rem; font-family:var(--font-mono);">
-            MISSION: <span id="mission-status" style="color:var(--accent-green)">IDLE</span> | 
+        <div style="font-weight:bold; color:var(--accent-cyan); font-size:0.9rem;">TERRAQUEST // COMMAND CENTER</div>
+        <div style="font-size: 0.7rem;">
+            MISSION: <span id="mission-status" style="color:var(--accent-green); font-weight:bold;">STANDBY</span> | 
             <button class="btn" onclick="toggleMission(true)">START</button> | 
             <button class="btn" onclick="toggleMission(false)">STOP</button>
         </div>
     </header>
 
-    <!-- HUGE AWS HERO -->
+    <!-- STABILIZED HERO -->
     <div id="aws-hero">
         <div class="aws-text">AWS</div>
         <div class="aws-value" id="aws-score">--</div>
     </div>
 
-    <div class="dashboard-main">
-        <!-- SQUARE VIDEO CENTER -->
-        <div class="video-box">
-            <div class="overlay">PRIMARY OPTICS // SQUARE_CROP</div>
-            <img id="camera-stream" src="" alt="SIGNAL_LOST">
-            <div id="joystick-zone"></div>
+    <!-- MAIN DASHBOARD AREA -->
+    <div class="workspace-grid">
+        
+        <!-- COL 1: VISION -->
+        <div class="col-video">
+            <div class="square-video-container">
+                <div class="overlay">PRIMARY OPTICS // SQUARE_FIX</div>
+                <img id="camera-stream" src="" alt="SIGNAL_LOST">
+                <div id="joystick-zone"></div>
+            </div>
         </div>
 
-        <!-- NANO TELEMETRY -->
-        <div class="sensor-nano-grid">
+        <!-- COL 2: TELEMETRY (2x4) -->
+        <div class="col-sensors">
             <div class="nano-card"><div class="nano-label">Discovery (DPS)</div><div class="nano-value" style="color:#e67e22"><span id="dps-score">--</span></div></div>
             <div class="nano-card"><div class="nano-label">Safety (TSS)</div><div class="nano-value" style="color:var(--accent-green)"><span id="tss-score">--</span></div></div>
+            
+            <div class="nano-card">
+                <div class="nano-label">Gas Level</div>
+                <div class="nano-main"><div class="nano-value"><span id="co2">--</span></div><div class="unit">k&Omega;</div></div>
+                <canvas id="chart-gas" class="sparkline"></canvas>
+            </div>
+
             <div class="nano-card">
                 <div class="nano-label">Magnetometer</div>
-                <div class="nano-value"><span id="mag-strength">--</span><span class="unit">µT</span></div>
+                <div class="nano-main"><div class="nano-value" style="font-size:1.1rem;"><span id="mag-strength">--</span></div><div class="unit">&mu;T</div></div>
+                <canvas id="chart-mag" class="sparkline"></canvas>
             </div>
+
             <div class="nano-card">
-                <div class="nano-label">Light Intensity</div>
-                <div class="nano-value"><span id="lux-val">--</span><span class="unit">Lx</span></div>
+                <div class="nano-label">Luminance</div>
+                <div class="nano-main"><div class="nano-value"><span id="lux-val">--</span></div><div class="unit">Lx</div></div>
+                <canvas id="chart-light" class="sparkline"></canvas>
             </div>
+
             <div class="nano-card">
-                <div class="nano-label">Atmosphere</div>
-                <div class="nano-value" style="font-size:1.2rem;"><span id="humidity">--</span>% / <span id="pressure">--</span>hPa</div>
+                <div class="nano-label">Humidity</div>
+                <div class="nano-main"><div class="nano-value"><span id="humidity">--</span></div><div class="unit">%</div></div>
+                <canvas id="chart-humid" class="sparkline"></canvas>
             </div>
+
             <div class="nano-card">
-                <div class="nano-label">UV Index</div>
-                <div class="nano-value"><span id="uv-val">--</span><span class="unit">UVI</span></div>
+                <div class="nano-label">Pressure</div>
+                <div class="nano-main"><div class="nano-value" style="font-size:1.1rem;"><span id="pressure">--</span></div><div class="unit">hPa</div></div>
+                <canvas id="chart-press" class="sparkline"></canvas>
+            </div>
+
+            <div class="nano-card">
+                <div class="nano-label">UV Radiation</div>
+                <div class="nano-main"><div class="nano-value"><span id="uv-val">--</span></div><div class="unit">UVI</div></div>
+                <canvas id="chart-uv" class="sparkline"></canvas>
             </div>
         </div>
 
-        <!-- THERMAL & AUX -->
-        <div class="thermal-box">
+        <!-- COL 3: THERMAL & STATS -->
+        <div class="col-stats">
             <div class="thermal-feed">
                 <div class="overlay" style="background:rgba(192,57,43,0.8)">THERMAL_IMAGER</div>
                 <canvas id="thermal-canvas" width="32" height="24"></canvas>
             </div>
-            <div class="nano-card" style="flex:1; border-left:4px solid var(--accent-red); justify-content:center; align-items:center; text-align:center;">
-                <div class="nano-label">Core Latency</div>
+            <div class="stat-card">
+                <div class="nano-label">Link Status</div>
                 <div class="nano-value" id="ping">--</div>
-                <div class="unit">milliseconds</div>
+                <div class="unit">ms latency</div>
+                <button class="btn" style="margin-top:5px" onclick="runDemo()">LAUNCH DEMO</button>
             </div>
         </div>
     </div>
 
     <footer>
-        TerraQuest Proto-Link v4.5 | <button onclick="runDemo()">LAUNCH DEMO</button>
+        TerraQuest Core v5.1 | Pi-Control System | Zero-Scroll Viewport
     </footer>
 
     <script>
         const hostname = window.location.hostname;
         document.getElementById('camera-stream').src = `http://${hostname}:9000/mjpg`;
 
+        Chart.defaults.color = 'rgba(0,0,0,0)';
+        function initChart(id, color) {
+            return new Chart(document.getElementById(id), {
+                type: 'line',
+                data: { labels: Array(30).fill(''), datasets: [{ data: Array(30).fill(null), borderColor: color, tension: 0.4, borderWidth: 1.5, pointRadius: 0 }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { x: { display: false }, y: { display: false } },
+                    animation: { duration: 0 }
+                }
+            });
+        }
+
+        const charts = {
+            gas: initChart('chart-gas', '#27ae60'),
+            mag: initChart('chart-mag', '#e67e22'),
+            light: initChart('chart-light', '#f39c12'),
+            humid: initChart('chart-humid', '#2980b9'),
+            press: initChart('chart-press', '#8e44ad'),
+            uv: initChart('chart-uv', '#c0392b')
+        };
+
+        function updateChart(chart, val) {
+            chart.data.datasets[0].data.push(val);
+            chart.data.datasets[0].data.shift();
+            chart.update();
+        }
+
         async function updateSensors() {
             try {
-                const res = await fetch('/data');
-                const data = await res.json();
+                const data = await (await fetch('/data')).json();
                 document.getElementById('aws-score').innerText = data.aws;
                 document.getElementById('dps-score').innerText = data.dps;
                 document.getElementById('tss-score').innerText = data.tss;
+                document.getElementById('co2').innerText = data.co2;
                 document.getElementById('lux-val').innerText = data.lux;
                 document.getElementById('uv-val').innerText = data.uv_index;
                 document.getElementById('humidity').innerText = data.humidity;
                 document.getElementById('pressure').innerText = data.pressure;
                 document.getElementById('mag-strength').innerText = data.magnetic;
-                document.getElementById('ping').innerText = Math.floor(Math.random()*15)+10;
+                document.getElementById('ping').innerText = Math.floor(Math.random()*12)+8;
 
-                const awsHero = document.getElementById('aws-hero');
-                awsHero.style.borderColor = data.aws < 40 ? "var(--accent-red)" : (data.aws < 70 ? "#f39c12" : "var(--accent-cyan)");
+                updateChart(charts.gas, data.co2);
+                updateChart(charts.mag, data.magnetic);
+                updateChart(charts.light, data.lux);
+                updateChart(charts.humid, data.humidity);
+                updateChart(charts.press, data.pressure);
+                updateChart(charts.uv, data.uv_index);
+
+                document.getElementById('aws-hero').style.borderColor = data.aws < 40 ? "#c0392b" : (data.aws < 70 ? "#f39c12" : "#008ba3");
             } catch (e) {}
         }
         setInterval(updateSensors, 1000);
 
-        var joystickManager = nipplejs.create({
-            zone: document.getElementById('joystick-zone'),
-            mode: 'static', position: { left: '50%', top: '50%' },
-            color: 'var(--accent-cyan)', size: 80
+        var joy = nipplejs.create({ 
+            zone: document.getElementById('joystick-zone'), mode: 'static', 
+            position: { left: '50%', top: '50%' }, color: '#008ba3', size: 50 
         });
-        joystickManager.on('move', (evt, data) => {
-            fetch('/api/control/move', { method: 'POST', body: JSON.stringify({ speed: Math.round(data.vector.y * 100), angle: Math.round(data.vector.x * 35) }), headers: { 'Content-Type': 'application/json' }});
-        });
-        joystickManager.on('end', () => fetch('/api/control/move', { method: 'POST', body: JSON.stringify({ speed:0, angle:0 }), headers: { 'Content-Type': 'application/json' }}));
+        joy.on('move', (e, d) => fetch('/api/control/move', { method: 'POST', body: JSON.stringify({ speed: Math.round(d.vector.y * 100), angle: Math.round(d.vector.x * 35) }), headers: { 'Content-Type': 'application/json' }}));
+        joy.on('end', () => fetch('/api/control/move', { method: 'POST', body: JSON.stringify({ speed:0, angle:0 }), headers: { 'Content-Type': 'application/json' }}));
 
-        const thermalCanvas = document.getElementById('thermal-canvas');
-        const thermalCtx = thermalCanvas.getContext('2d');
+        const tCanvas = document.getElementById('thermal-canvas');
+        const tCtx = tCanvas.getContext('2d');
         setInterval(async () => {
             try {
-                const res = await fetch('/api/thermal');
-                const data = await res.json();
+                const data = await (await fetch('/api/thermal')).json();
                 if (!data || data.length !== 768) return;
-                const imgData = thermalCtx.createImageData(32, 24);
+                const img = tCtx.createImageData(32, 24);
                 for (let i = 0; i < 768; i++) {
                     const t = (data[i] - 20) / 15;
-                    imgData.data[i*4] = 255 * t;
-                    imgData.data[i*4+2] = 255 * (1-t);
-                    imgData.data[i*4+3] = 255;
+                    img.data[i*4] = 255 * t;
+                    img.data[i*4+2] = 255 * (1-t);
+                    img.data[i*4+3] = 255;
                 }
-                thermalCtx.putImageData(imgData, 0, 0);
+                tCtx.putImageData(img, 0, 0);
             } catch (e) {}
         }, 1000);
 
-        async function toggleMission(s) { await fetch(s?'/api/scout/start':'/api/scout/stop', {method:'POST'}); document.getElementById('mission-status').innerText = s?"ACTIVE":"IDLE"; }
+        async function toggleMission(s) { await fetch(s?'/api/scout/start':'/api/scout/stop', {method:'POST'}); document.getElementById('mission-status').innerText = s?"ACTIVE":"STANDBY"; }
         async function runDemo() { await fetch('/api/demo', {method:'POST'}); }
     </script>
 </body>
