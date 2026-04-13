@@ -4,6 +4,8 @@ from flask_socketio import SocketIO, emit
 import random
 import time
 import threading
+import urllib.request
+import json
 from robot_hat import Servo
 
 # Vilib/Camera availability flag
@@ -496,6 +498,22 @@ def get_sensor_data():
     }
     return jsonify(data)
 
+
+@app.route('/api/location')
+def get_location():
+    try:
+        # Fetch location based on the server's public IP
+        with urllib.request.urlopen('https://ipapi.co/json/', timeout=5) as response:
+            data = json.loads(response.read().decode())
+            return jsonify({
+                'lat': data.get('latitude'),
+                'lon': data.get('longitude'),
+                'city': data.get('city'),
+                'region': data.get('region'),
+                'org': data.get('org')
+            })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/thermal')
 def get_thermal_data():

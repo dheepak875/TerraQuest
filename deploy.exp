@@ -4,7 +4,7 @@ set password "letsgoww"
 set timeout 60
 
 # Deploy key files and directories in a single pass to conserve PTYs
-spawn scp -r terraquest_sensors.py terraquest_base.py terraquest_scout.py terraquest_scout_v2.py dashboard tools terraq@TerraQuest-2.local:~/TerraQuest/
+spawn scp -r terraquest_sensors.py terraquest_base.py terraquest_scout_v2.py dashboard tools terraq@TerraQuest-2.local:~/TerraQuest/
 
 expect {
     "Are you sure you want to continue connecting" { send "yes\r"; exp_continue }
