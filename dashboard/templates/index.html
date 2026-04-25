@@ -9,9 +9,9 @@
     <script src="{{ url_for('static', filename='js/nipplejs.min.js') }}"></script>
     <!-- Charts (Local) -->
     <script src="{{ url_for('static', filename='js/chart.min.js') }}"></script>
-    <!-- Leaflet Map -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Leaflet Map (Local) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/leaflet.css') }}"/>
+    <script src="{{ url_for('static', filename='js/leaflet.min.js') }}"></script>
     <style>
         :root {
             --bg-color: #f8f9fa;
@@ -113,7 +113,26 @@
             animation: blink-prime-site 0.6s infinite;
         }
 
-        .blink-prime .aws-text, .blink-prime .aws-value, .blink-prime #aws-analysis {
+        .blink-prime .aws-text, .blink-prime .aws-value {
+            color: inherit !important;
+        }
+
+        /* Red Danger Blink for No-Go Zone / Gas Alert */
+        @keyframes blink-danger {
+            0% { background-color: var(--card-bg); }
+            50% { background-color: #e74c3c; color: white; border-color: #c0392b; }
+            100% { background-color: var(--card-bg); }
+        }
+
+        .blink-danger {
+            animation: blink-danger 0.6s infinite;
+        }
+
+        .blink-danger .aws-text, .blink-danger .aws-value {
+            color: inherit !important;
+        }
+
+        .blink-danger .nano-label, .blink-danger .nano-value, .blink-danger .unit {
             color: inherit !important;
         }
 
@@ -319,7 +338,8 @@
         <div style="font-size: 0.7rem;">
             MISSION: <span id="mission-status" style="color:var(--accent-green); font-weight:bold;">STANDBY</span> | 
             <button class="btn" onclick="toggleMission(true)">START</button> | 
-            <button class="btn" onclick="toggleMission(false)">STOP</button>
+            <button class="btn" onclick="toggleMission(false)">STOP</button> | 
+            <button class="btn" style="background:var(--accent-cyan); color:white; border:none; border-radius:3px;" onclick="runDemo()">DEMO</button>
         </div>
     </header>
 
@@ -329,7 +349,6 @@
         <div class="aws-value" id="aws-score">--</div>
         <div id="aws-analysis-box">
             <div id="aws-status">Detecting...</div>
-            <div id="aws-analysis">Awaiting sensor bimodal fusion data...</div>
         </div>
     </div>
 
@@ -350,7 +369,7 @@
             <div class="nano-card"><div class="nano-label">Discovery (DPS)</div><div class="nano-value" style="color:#e67e22"><span id="dps-score">--</span></div></div>
             <div class="nano-card"><div class="nano-label">Safety (TSS)</div><div class="nano-value" style="color:var(--accent-green)"><span id="tss-score">--</span></div></div>
             
-            <div class="nano-card">
+            <div class="nano-card" id="gas-card">
                 <div class="nano-label">Gas Level</div>
                 <div class="nano-main"><div class="nano-value"><span id="co2">--</span></div><div class="unit">k&Omega;</div></div>
                 <canvas id="chart-gas" class="sparkline"></canvas>
@@ -400,8 +419,7 @@
                     <div style="font-size: 0.9rem; font-weight: bold;"><span id="ping">--</span> <span class="unit">ms</span></div>
                     <div id="rover-city" style="font-size: 0.55rem; color: #666; margin-top: 2px;">Detecting...</div>
                 </div>
-                <!-- Mini Button Overlay -->
-                <button class="btn" style="position:absolute; bottom:5px; left:5px; z-index:1000; background:rgba(255,255,255,0.8)" onclick="runDemo()">DEMO</button>
+
             </div>
         </div>
     </div>
@@ -489,6 +507,8 @@
             chart.update();
         }
 
+        let prevAwsState = 'normal';  // Track state transitions for sound
+
         async function updateSensors() {
             try {
                 const data = await (await fetch('/data')).json();
@@ -514,31 +534,50 @@
                 // Update Status and Analysis Text
                 const hero = document.getElementById('aws-hero');
                 const statusEl = document.getElementById('aws-status');
-                const analysisEl = document.getElementById('aws-analysis');
+                const gasCard = document.getElementById('gas-card');
                 
-                hero.classList.remove('blink-prime');
+                hero.classList.remove('blink-prime', 'blink-danger');
+                gasCard.classList.remove('blink-danger');
 
+                // Gas card red blink when gas drops (sanitizer / pollution)
+                if (data.co2 < 50000) {
+                    gasCard.classList.add('blink-danger');
+                }
+
+                // Determine current state
+                let currentState = 'normal';
                 if (score >= 80) {
+                    currentState = 'prime';
                     statusEl.innerText = "Prime Site";
-                    analysisEl.innerText = "High Discovery / High Safety. The \"Golden\" target. Exceptional archaeological value with minimal safety barriers.";
                     hero.style.borderColor = "#2ecc71";
                     statusEl.style.color = "#27ae60";
                     hero.classList.add('blink-prime');
                 } else if (score >= 60) {
+                    currentState = 'interest';
                     statusEl.innerText = "Active Interest";
-                    analysisEl.innerText = "High Discovery / Moderate Risk. Great archaeological value, but requires safety equipment (gas masks) to enter.";
                     hero.style.borderColor = "#f1c40f";
                     statusEl.style.color = "#f39c12";
                 } else if (score >= 40) {
+                    currentState = 'normal';
                     statusEl.innerText = "Low Priority";
-                    analysisEl.innerText = "Low Discovery / High Safety. A very safe site, but has little to no historical value (like the \"Parking Lot\" example).";
                     hero.style.borderColor = "#e67e22";
                     statusEl.style.color = "#d35400";
                 } else {
+                    currentState = 'danger';
                     statusEl.innerText = "No-Go Zone";
-                    analysisEl.innerText = "Low Discovery / High Risk. Zero historical value and dangerous environmental conditions. Mission Aborted.";
                     hero.style.borderColor = "#e74c3c";
                     statusEl.style.color = "#c0392b";
+                    hero.classList.add('blink-danger');
+                }
+
+                // Trigger sound on STATE TRANSITION only
+                if (currentState !== prevAwsState) {
+                    if (currentState === 'prime') {
+                        fetch('/api/sound/prime', {method: 'POST'});
+                    } else if (currentState === 'danger') {
+                        fetch('/api/sound/danger', {method: 'POST'});
+                    }
+                    prevAwsState = currentState;
                 }
             } catch (e) {}
         }

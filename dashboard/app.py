@@ -8,6 +8,59 @@ import urllib.request
 import json
 from robot_hat import Servo
 
+# --- Sound Effects via Robot HAT Speaker ---
+SOUND_AVAILABLE = False
+try:
+    from robot_hat import Music
+    import struct
+    import wave
+    import math
+    import os
+    
+    _music = Music()
+    _sound_dir = os.path.join(os.path.dirname(__file__), 'sounds')
+    os.makedirs(_sound_dir, exist_ok=True)
+    
+    def _generate_tone_wav(filepath, frequencies, duration_each=0.15, sample_rate=22050, volume=1.0):
+        """Generate a .wav file with a sequence of tones."""
+        samples = []
+        for freq in frequencies:
+            num_samples = int(sample_rate * duration_each)
+            for i in range(num_samples):
+                t = i / sample_rate
+                val = volume * math.sin(2 * math.pi * freq * t)
+                # Fade in/out to avoid clicks
+                envelope = min(i / 200, (num_samples - i) / 200, 1.0)
+                samples.append(int(val * envelope * 32767))
+        with wave.open(filepath, 'w') as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(sample_rate)
+            wf.writeframes(struct.pack('<' + 'h' * len(samples), *samples))
+    
+    # Generate tone files
+    _prime_wav = os.path.join(_sound_dir, 'prime.wav')
+    _danger_wav = os.path.join(_sound_dir, 'danger.wav')
+    
+    # Prime Site: ascending happy chime (C5 → E5 → G5 → C6)
+    _generate_tone_wav(_prime_wav, [523, 659, 784, 1047], duration_each=0.12)
+    # Danger: descending alarm (G4 → E4 → C4, repeated)
+    _generate_tone_wav(_danger_wav, [392, 330, 262, 392, 330, 262], duration_each=0.1)
+    
+    _music.music_set_volume(100)
+    # Also max out system ALSA volume
+    import subprocess
+    try:
+        subprocess.run(['amixer', 'sset', 'Master', '100%'], capture_output=True)
+    except: pass
+    try:
+        subprocess.run(['amixer', 'sset', 'PCM', '100%'], capture_output=True)
+    except: pass
+    SOUND_AVAILABLE = True
+    print("✓ Sound effects initialized (Robot HAT speaker, volume MAX)")
+except Exception as e:
+    print(f"⚠ Sound init warning (non-fatal): {e}")
+
 # Vilib/Camera availability flag
 VILIB_AVAILABLE = False
 
@@ -138,6 +191,34 @@ for attempt in range(max_retries):
 @app.route('/')
 def index():
     return render_template('index.html')
+
+# Sound effect cooldown tracker
+_last_sound_time = 0
+_SOUND_COOLDOWN = 3  # seconds between sounds
+
+@app.route('/api/sound/prime', methods=['POST'])
+def sound_prime():
+    global _last_sound_time
+    if SOUND_AVAILABLE:
+        now = time.time()
+        if now - _last_sound_time > _SOUND_COOLDOWN:
+            _last_sound_time = now
+            _music.sound_play_threading(_prime_wav)
+            return jsonify({'status': 'playing prime sound'})
+        return jsonify({'status': 'cooldown'})
+    return jsonify({'error': 'sound not available'}), 400
+
+@app.route('/api/sound/danger', methods=['POST'])
+def sound_danger():
+    global _last_sound_time
+    if SOUND_AVAILABLE:
+        now = time.time()
+        if now - _last_sound_time > _SOUND_COOLDOWN:
+            _last_sound_time = now
+            _music.sound_play_threading(_danger_wav)
+            return jsonify({'status': 'playing danger sound'})
+        return jsonify({'status': 'cooldown'})
+    return jsonify({'error': 'sound not available'}), 400
 
 @app.route('/api/scout/start', methods=['POST'])
 def start_scout():
@@ -453,55 +534,68 @@ def get_sensor_data():
             'altitude': rover.env_data.get('altitude', 0),
             'pressure': rover.env_data.get('pressure', 0)
         }
-        # --- NEW SCORING LOGIC (Bimodal Fusion) ---
+        # --- SCORING LOGIC (Bimodal Fusion) ---
+        # Goal: Baseline ~50-55 (fluctuating), magnet detection → 85+
 
-        # 1. DPS (Discovery Potential Score) - Accumulator
-        # "Is there something cool here?"
+        # 1. DPS (Discovery Potential Score) - "Is there something cool here?"
         dps = 0
         
-        # Magnetometer (40 pts): Anomalies indicate metal/structures
-        if data['mag_anomaly'] > 50:
-            dps += 40
-        
-        # UV Index (30 pts): "Specific UV reflections" (Simulated/logic check)
-        # Assuming 'uv_index' might be added later, using gas/temp as proxy for now or just randomization if missing
-        # For now, let's map it to something interesting or keep 0 if sensors missing.
-        # We'll use a placeholder logic: If temp is within "life" range (20-30C), add points for potential bio-discovery
-        # OR if we had UV sensor data. Let's use `rover.env_data.get('uv', 0)` if it existed.
-        # defaulting to humidity for "surface features" proxy? Let's use consistent mag data partially.
-        # Actually, let's check if we have data. For this prototype, if Anomaly is VERY high > 200, add extra.
-        # Let's add 30 if altitude is non-zero (valid scan height)
-        if data['altitude'] > 0:
-            dps += 30
+        # Magnetometer anomaly is the PRIMARY discovery driver
+        mag_anom = data['mag_anomaly']
+        if mag_anom > 200:
+            dps += 100  # Very strong anomaly = max discovery
+        elif mag_anom > 100:
+            dps += 80
+        elif mag_anom > 50:
+            dps += 60   # Moderate anomaly
+        elif mag_anom > 20:
+            dps += 15   # Faint background noise (keeps baseline low)
+        else:
+            dps += 5    # Minimal baseline
             
-        # UV/Surface proxy (30 pts)
-        # Using Gas resistance spikes as a proxy for "interesting chemical signatures" for now
-        if data['co2'] > 50000: # Excellent air might mean open area/surface activity
-            dps += 30
+        # Minor environmental bonus (keeps score fluctuating, not static)
+        # Temperature in comfortable range adds a small bump
+        temp = data['temp']
+        if 18 < temp < 35:
+            dps += 5
+        
+        # Gas resistance bonus (small, just for fluctuation)
+        if data['co2'] > 50000:
+            dps += 5
 
-        # 2. TSS (Terrain Safety Score) - Guardian
-        # "Is it safe to be there?"
-        tss = 100
+        dps = min(100, dps)  # Cap at 100
+
+        # 2. TSS (Terrain Safety Score) - "Is it safe to be there?"
+        tss = 80  # Start at 80 (not 100) so baseline AWS is lower
         
-        # Air Quality (Gas Res in Ohms): Lower = Gas present/Pollution
-        # If Air Quality Ohms drop (< 10k from UI logic is poor), subtract 50
+        # Air Quality: Lower gas resistance = pollution (aggressive for demo)
         if data['co2'] < 10000:
-            tss -= 50
+            tss -= 65   # Very bad air → AWS crashes to teens
+        elif data['co2'] < 30000:
+            tss -= 50   # Bad air → AWS drops to 20s
+        elif data['co2'] < 50000:
+            tss -= 30   # Moderate → AWS drops to 30s
             
-        # Humidity: High humidity (>80%) = Soft soil risk
+        # Humidity: High humidity (>80%) = soft soil risk
         if data['humidity'] > 80:
-            tss -= 30
+            tss -= 15
+        elif data['humidity'] > 60:
+            tss -= 5   # Mild deduction for moderate humidity
             
-        # Pressure: Unstable/Low (<950) = Storm risk / Void risk
+        # Pressure: Unstable conditions
         if data['pressure'] < 950 or data['pressure'] > 1050:
-            tss -= 20
+            tss -= 15
             
-        tss = max(0, tss) # Clamp to 0
+        tss = max(0, min(100, tss))  # Clamp 0-100
 
         # 3. AWS Fusion (Weighted)
-        # "Final Decision"
-        # Formula: AWS = (TSS * 0.65) + (DPS * 0.35)
-        aws = int((tss * 0.65) + (dps * 0.35))
+        # With baseline: TSS~70, DPS~10-20 → AWS = (70*0.6)+(15*0.4) = 42+6 = ~48-55
+        # With magnet:   TSS~70, DPS~80-100 → AWS = (70*0.6)+(90*0.4) = 42+36 = ~78-85+
+        aws = int((tss * 0.6) + (dps * 0.4))
+        
+        # Add natural fluctuation (±3) so the score looks alive, not static
+        aws += random.randint(-3, 3)
+        aws = max(0, min(100, aws))  # Clamp 0-100
 
         data['aws'] = aws
         data['tss'] = tss

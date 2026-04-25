@@ -55,7 +55,7 @@ class TerraQuestSensors:
 
         # Mag Baseline
         self.mag_baseline = 0
-        self.mag_alpha = 0.05 
+        self.mag_alpha = 0.4  # Fast-tracking so anomaly drops quickly when magnet removed
         
         self.init_bme688()
         self.init_mlx90640()
@@ -166,10 +166,13 @@ class TerraQuestSensors:
         Returns (als, uvs)
         als: Ambient Light Sensor (Lux-ish raw)
         uvs: UV Sensor (Raw UV Index)
+        Note: LTR390 must switch modes between ALS and UVS reads.
+        A small delay is needed for the sensor to settle after mode switch.
         """
         if self.ltr:
             try:
                 als = self.ltr.light
+                time.sleep(0.05)  # Allow mode switch to UVS
                 uvs = self.ltr.uvs
                 return int(als), int(uvs)
             except Exception as e:
@@ -180,6 +183,8 @@ class TerraQuestSensors:
     def get_magnetic_data(self):
         """
         Returns (strength, anomaly)
+        Uses a freeze-on-anomaly baseline: baseline only updates during calm periods
+        so it doesn't chase magnet readings.
         """
         if self.mag:
             try:
@@ -198,11 +203,13 @@ class TerraQuestSensors:
                 if self.mag_baseline == 0:
                     self.mag_baseline = strength
                 
-                # Update baseline
-                self.mag_baseline = (self.mag_baseline * (1 - self.mag_alpha)) + (strength * self.mag_alpha)
-                
-                # Anomaly is deviation
+                # Calculate anomaly BEFORE updating baseline
                 anomaly = abs(strength - self.mag_baseline)
+                
+                # Only update baseline during CALM periods (no anomaly)
+                # This prevents baseline from chasing the magnet
+                if anomaly < 30:
+                    self.mag_baseline = (self.mag_baseline * (1 - self.mag_alpha)) + (strength * self.mag_alpha)
                 
                 return int(strength), int(anomaly)
             except Exception:
