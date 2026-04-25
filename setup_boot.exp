@@ -1,0 +1,33 @@
+#!/usr/bin/expect -f
+
+set password "letsgoww"
+set timeout 60
+
+spawn ssh -o StrictHostKeyChecking=no terraq@TerraQuest-2.local
+
+expect {
+    "Are you sure you want to continue connecting" { send "yes\r"; exp_continue }
+    "password:" { send "$password\r"; exp_continue }
+    "Password:" { send "$password\r"; exp_continue }
+    "$ " { }
+}
+
+# Create launch_at_boot.sh
+send "cat << 'EOF' > /home/terraq/TerraQuest/launch_at_boot.sh\r"
+send "#!/bin/bash\r"
+send "sudo systemctl stop terraquest.service\r"
+send "sleep 2\r"
+send "cd /home/terraq/TerraQuest/dashboard\r"
+send "/usr/bin/python3 app.py > /home/terraq/TerraQuest/dashboard_boot.log 2>&1\r"
+send "EOF\r"
+
+expect "$ "
+send "chmod +x /home/terraq/TerraQuest/launch_at_boot.sh\r"
+
+expect "$ "
+# Add to crontab if not already present
+send "(crontab -l 2>/dev/null; echo \"@reboot /home/terraq/TerraQuest/launch_at_boot.sh\") | crontab -\r"
+
+expect "$ "
+send "exit\r"
+expect eof

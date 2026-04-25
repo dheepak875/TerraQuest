@@ -1,0 +1,27 @@
+#!/usr/bin/expect -f
+
+set password "letsgoww"
+set timeout 60
+
+# Push the script (SCP part worked, but let's be sure)
+spawn scp -o StrictHostKeyChecking=no launch_at_boot.sh terraq@TerraQuest-2.local:~/TerraQuest/launch_at_boot.sh
+expect {
+    "password:" { send "$password\r" }
+    eof
+}
+
+# Configure crontab
+spawn ssh -o StrictHostKeyChecking=no terraq@TerraQuest-2.local
+expect {
+    "password:" { send "$password\r" }
+}
+
+# Wait for the prompt more aggressively
+expect -re {[$#] }
+
+send "chmod +x ~/TerraQuest/launch_at_boot.sh\r"
+expect -re {[$#] }
+send "(crontab -l 2>/dev/null | grep -v 'launch_at_boot.sh'; echo \"@reboot ~/TerraQuest/launch_at_boot.sh\") | crontab -\r"
+expect -re {[$#] }
+send "exit\r"
+expect eof

@@ -94,6 +94,25 @@ def start_rover_thread():
         rover_thread.start()
         print("Rover Thread Started (Idle)")
 
+def force_cleanup_gpio():
+    """Force-release any GPIO pins held by a previous crashed process."""
+    try:
+        import lgpio
+        # Close any stale lgpio chip handles (typically 0-15)
+        for handle in range(16):
+            try:
+                lgpio.gpiochip_close(handle)
+            except:
+                pass
+        print("✓ GPIO cleanup complete (stale handles released)")
+    except ImportError:
+        print("⚠ lgpio not available, skipping GPIO cleanup")
+    except Exception as e:
+        print(f"⚠ GPIO cleanup warning (non-fatal): {e}")
+
+# Force-release GPIO before any hardware init
+force_cleanup_gpio()
+
 # Initialize rover logic on app start with retry logic
 max_retries = 3
 retry_delay = 2  # seconds

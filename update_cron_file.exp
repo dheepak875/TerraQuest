@@ -1,0 +1,12 @@
+#!/usr/bin/expect -f
+
+set password "letsgoww"
+set timeout 30
+
+spawn ssh -o StrictHostKeyChecking=no terraq@TerraQuest-2.local "echo '@reboot /home/terraq/TerraQuest/launch_at_boot.sh' > ~/mycron && crontab ~/mycron && rm ~/mycron"
+
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    eof
+}
+puts "\nCrontab Update Attempted via file (Fixed expect)."
